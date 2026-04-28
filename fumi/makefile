@@ -2,7 +2,7 @@
 .PHONY: fumi
 
 compiler := gcc
-cflags := -Wall -Wextra -pedantic -Wswitch-enum -std=c23 -Og -ggdb
+cflags := -Wall -Wextra -pedantic -std=c23 -Og -ggdb
 clibs := -lmcu-debug
 
 fumi:

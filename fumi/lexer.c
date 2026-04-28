@@ -6,6 +6,57 @@
 
 #include "lexer.h"
 
+const cstr TokenType_to_cstr(TokenType self) {
+   switch (self) {
+      // Miscellaneous
+      case TT_Eof: return "Eof";
+
+      // Single char
+      case TT_Colon:  return "Colon";
+      case TT_Equals: return "Equals";
+
+      // Literals
+      case TT_Identifier: return "Identifier";
+      case TT_IntLiteral: return "IntLiteral";
+
+      // Keywords
+      case TT_Procedure: return "Procedure";
+      case TT_Begin:     return "Begin";
+      case TT_End:       return "End";
+   }
+
+   return "Unknown";
+}
+
+void Token_free(Token self) {
+   switch (self.type) {
+      case TT_Eof:        break;
+      case TT_Colon:      break;
+      case TT_Equals:     break;
+      case TT_IntLiteral: break;
+      case TT_Procedure:  break;
+      case TT_Begin:      break;
+      case TT_End:        break;
+   
+      case TT_Identifier: {
+         String_free(&self.str_literal);
+      } break;
+   }
+}
+
+void Token_print(const cstr path, Token self) {
+   printf("%s:%zu:%zu:%zu: %s", path, self.y, self.x, self.length, TokenType_to_cstr(self.type));
+
+   switch (self.type) {
+      case TT_Identifier: println(" (%s)", self.str_literal.chars); break;
+      case TT_IntLiteral: println(" (%ld)", self.int_literal);      break;
+
+      default: {
+         printf("\n");
+      }
+   }
+}
+
 Lexer Lexer_new(const cstr path, bool* failure) {
    mcu_assert(path != nullptr, "path can't be null");
 
@@ -47,5 +98,138 @@ void Lexer_free(Lexer* self) {
    }
 
    *self = (Lexer) {0};
+}
+
+bool Lexer_advance(Lexer* self) {
+   if (self->current == '\n') {
+      self->y += 1;
+      self->x = 1;
+   } else {
+      self->x += 1;
+   }
+
+   self->current = self->peek;
+   self->peek = fgetc(self->handle);
+
+   if (self->peek == EOF && ferror(self->handle)) {
+      eprintln("[!] Failed to read from file \"%s\", reason: \"%s\"", self->path, strerror(errno));
+      return true;
+   }
+
+   return false;
+}
+
+bool char_is_identifier_allowed(char self) {
+   if (self >= 'a' && self <= 'z') return true;
+   if (self >= 'A' && self <= 'Z') return true;
+   if (self >= '0' && self <= '9') return true;
+   if (self == '-' || self == '_') return true;
+   return false;
+}
+
+Token Lexer_next(Lexer* self, bool* failure) {
+   mcu_assert(self != nullptr, "self can't be null");
+
+   self->mode = LM_Trim;
+   String_clear(&self->accumulated);
+
+   Token token = {
+      .x = self->x,
+      .y = self->y,
+      .length = 1,
+      .type = TT_Eof
+   };
+
+   bool int_is_negative = false;
+
+   loop {
+      if (Lexer_advance(self)) goto failure;
+      if (self->current == EOF) break;
+
+   reparse_char:
+      switch (self->mode) {
+         case LM_Trim: {
+            token.x = self->x;
+            token.y = self->y;
+
+            switch (self->current) {
+               case ':': token.type = TT_Colon;  return token;
+               case '=': token.type = TT_Equals; return token;
+
+               case '-': {
+                  if (self->peek >= '0' && self->peek <= '9') {
+                     token.length += 1;
+                     int_is_negative = true;
+                     self->mode = LM_Integer;
+                  }
+               } break;
+
+               case '/': {
+                  switch (self->peek) {
+                     case '/': self->mode = LM_Comment; break;
+                     default: break;
+                  }
+               } break;
+
+               case ' ':  break;
+               case '\n': break;
+
+               default: {
+                  if (self->current >= '0' && self->current <= '9') {
+                     int_is_negative = false;
+                     self->mode = LM_Integer;
+                     goto reparse_char;
+                  }
+
+                  if (char_is_identifier_allowed(self->current)) {
+                     self->mode = LM_Normal;
+                     goto reparse_char;
+                  }
+               }
+            }
+         } break;
+
+         case LM_Comment: {
+            if (self->peek == EOF || self->peek == '\n') {
+               self->mode = LM_Trim;
+            }
+         } break;
+
+         case LM_Normal: {
+            String_append(&self->accumulated, self->current);
+
+            if (!char_is_identifier_allowed(self->peek)) {
+               token.type = TT_Identifier;
+               token.length = self->accumulated.length;
+               token.str_literal = String_clone(self->accumulated);
+               return token;
+            }
+         } break;
+
+         case LM_Integer: {
+            token.int_literal *= 10;
+            token.int_literal += self->current - '0';
+
+            if (!(self->peek >= '0' && self->peek <= '9')) {
+               if (int_is_negative) token.int_literal = -token.int_literal;
+               token.type = TT_IntLiteral;
+               return token;
+            }
+
+            token.length += 1;
+         } break;
+
+         default: {
+            panic("unreachable");
+         }
+      }
+   }
+
+   if (failure != nullptr) *failure = false;
+   return token;
+
+failure:
+   if (failure != nullptr) *failure = true;
+   return token;
 }
 
