@@ -12,3 +12,10 @@ If you're **that** desperate to get your hands on the compiler without making a 
 for my library in order to compile the project, The compiler binary is located under build/bin as "fumi".
 The binary is compiled for x86-64 Linux.
 
+# Roadmap
+[ ] Asm generation for x86-64 Linux
+[ ] Turing complete
+[ ] Statically and strongly typed
+[ ] Self hosted
+[ ] Own assembler
+

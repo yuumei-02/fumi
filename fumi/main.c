@@ -32,7 +32,7 @@ i32 compile(const cstr file_path, CompileFlags flags) {
       return token_dump(file_path);
 
    bool failure;
-   Ast ast = Ast_parse_from_file_path(file_path, flags, &failure);
+   Ast ast = Ast_parse_from_file_path(file_path, &failure);
    if (failure) return 1;
 
    if (flags.ast_dump) {
