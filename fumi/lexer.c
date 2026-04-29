@@ -1,10 +1,36 @@
 #include <mcu/core.h>
+#include <mcu/containers.h>
+#include <mcu/memory.h>
 #include <mcu/io.h>
 
 #include <string.h>
 #include <errno.h>
 
 #include "lexer.h"
+
+HashMap_hdr(TokenType)
+HashMap_impl(TokenType)
+
+bool Lexer_keyword_hashmap_defined = false;
+// No need to free this hashmap as its supposed to live for the entire duration
+// of the program anyway
+HashMap(TokenType) keywords;
+
+void Lexer_define_keyword_hashmap() {
+   if (Lexer_keyword_hashmap_defined)
+      return;
+
+   keywords = HashMap_new(TokenType)();
+
+   #define def_keyword(keyword, type) \
+      HashMap_put(TokenType)(&keywords, keyword, type);
+
+   def_keyword("procedure", TT_Procedure);
+   def_keyword("begin", TT_Begin);
+   def_keyword("end", TT_End);
+
+   #undef def_keyword
+}
 
 const cstr TokenType_to_cstr(TokenType self) {
    switch (self) {
@@ -80,6 +106,7 @@ Lexer Lexer_new(const cstr path, bool* failure) {
    }
 
    self.accumulated = String_new();
+   Lexer_define_keyword_hashmap();
 
    if (failure != nullptr) *failure = false;
    return self;
@@ -199,9 +226,16 @@ Token Lexer_next(Lexer* self, bool* failure) {
             String_append(&self->accumulated, self->current);
 
             if (!char_is_identifier_allowed(self->peek)) {
-               token.type = TT_Identifier;
                token.length = self->accumulated.length;
-               token.str_literal = String_clone(self->accumulated);
+
+               TokenType* keyword = HashMap_get(TokenType)(&keywords, self->accumulated.chars);
+               if (keyword == nullptr) {
+                  token.type = TT_Identifier;
+                  token.str_literal = String_clone(self->accumulated);
+                  return token;
+               }
+
+               token.type = *keyword;
                return token;
             }
          } break;
