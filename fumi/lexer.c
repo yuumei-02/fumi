@@ -106,6 +106,7 @@ Lexer Lexer_new(const cstr path, bool* failure) {
    }
 
    self.accumulated = String_new();
+   self.Token_undo_stack = Vector_new(sizeof(Token));
    Lexer_define_keyword_hashmap();
 
    if (failure != nullptr) *failure = false;
@@ -120,6 +121,7 @@ void Lexer_free(Lexer* self) {
    mcu_assert(self != nullptr, "self can't be null");
 
    String_free(&self->accumulated);
+   Vector_free(&self->Token_undo_stack);
    if (fclose(self->handle)) {
       eprintln("[!] Failed to close file \"%s\", reason: \"%s\"", self->path, strerror(errno));
    }
@@ -156,6 +158,10 @@ bool char_is_identifier_allowed(char self) {
 
 Token Lexer_next(Lexer* self, bool* failure) {
    mcu_assert(self != nullptr, "self can't be null");
+
+   if (self->Token_undo_stack.length > 0) {
+      return *(Token*) Vector_pop(&self->Token_undo_stack);
+   }
 
    self->mode = LM_Trim;
    String_clear(&self->accumulated);
@@ -267,7 +273,15 @@ failure:
    return token;
 }
 
-Token Lexer_peek(Lexer* self, bool* failure) {}
+Token Lexer_peek(Lexer* self, bool* failure) {
+   Token peek = Lexer_next(self, failure);
+   Lexer_undo(self, peek);
 
-void Lexer_undo(Lexer* self);
+   return peek;
+}
+
+void Lexer_undo(Lexer* self, Token token) {
+   mcu_assert(self != nullptr, "self can't be null");
+   Vector_push(&self->Token_undo_stack, &token);
+}
 

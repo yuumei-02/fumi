@@ -47,7 +47,7 @@ typedef struct {
    i32 peek;
    LexerMode mode;
    String accumulated;
-   Vector undo_stack;
+   Vector Token_undo_stack;
 
    const cstr path;
    FILE* handle;
@@ -64,5 +64,5 @@ void Lexer_free(Lexer* self);
 
 Token Lexer_next(Lexer* self, bool* failure);
 Token Lexer_peek(Lexer* self, bool* failure);
-void Lexer_undo(Lexer* self);
+void Lexer_undo(Lexer* self, Token token);
 
