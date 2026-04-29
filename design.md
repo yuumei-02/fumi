@@ -1,38 +1,106 @@
 A shittely put together document to get my thoughts on the language's design out.
 
 # Functions
+## Basic
 ```Fumi
-procedure constraints<T> with
-   a: T
-   returns T
-where
-   T implements dup
+procedure main with
+   args : array<str>
 begin
-   result : T = a.dup
-   return result;
-end
-
-procedure add with a : i32, b : i32 returns i32 begin
-   result := a + b;
-   return result;
-end
-
-extern puts
-
-procedure main begin
-   puts("zhyivannye miratte")
+   puts("Zhyivannye miratte")
 end
 ```
 
-# Types and variables
+## Default parameters
 ```Fumi
-infer := 69
-specify : i32 = 420;
+procedure list-dir with
+   path : str,
+   max-depth : i32 = 10
+begin
+   // Implementation
+end
+```
+
+## External
+```Fumi
+external "C" procedure puts with
+   s: str
+end
+```
+
+## Generics
+```Fumi
+procedure display<T> with
+   i: T
+   returns void
+where
+   T implements to_str
+begin
+   puts(i.to_str())
+end
+```
+
+# Variables
+```Fumi
+type-inferred := i32 // inferred as i32
+specify : str = "type specified manually"
+```
+
+# Types
+## Structs & Unions
+```Fumi
+union mystery-box is
+   magic-value: i32,
+   name: str
+end
 
 struct vec2<T> is
-   x: T
+   x: T,
    y: T
 where
    T implements copy
 end
 ```
+
+## Enums & Tagged unions
+```Fumi
+enum error is
+   OutOfMemory,
+   FileNotFound
+end
+
+enum token is union of
+   Identifier(str),
+   IntLiteral(i64),
+   Keyword
+end
+```
+
+# Modules;
+```std/io.fumi
+// Namespace is that of the file's name
+
+procedure println with format: str begin
+   // Implementation
+end
+```
+
+```std/path.fumi
+module "file-system" // Redefine this file's export namespace to be "file-system"
+
+procedure list-files begin
+   // Implementation
+end
+```
+
+```main.fumi
+import "std/io.fumi"
+import "std/path.fumi"
+import "std/path.fumi" as fs; // Alias module "file-system" to "fs" in the current file
+
+procedure main begin
+   io.println("zhyivannye, miratte")
+   file-system.list-files()
+   fs.list-files;
+end
+```
+
