@@ -1,5 +1,9 @@
+#pragma once
+
 #include <mcu/core.h>
 #include <mcu/containers.h>
+
+#include "flags.h"
 
 typedef enum {
    ANT_Module,
@@ -13,13 +17,14 @@ typedef enum {
 /// AstNodeIndex
 typedef isize ANI;
 
+// @note: Don't forget to update Ast_free when changing AstNode fields
 typedef struct {
    AstNodeType type;
 
    union {
       struct {
          String path;
-         Vector ANI_functions;
+         Vector ANI_procedures;
       } module;
 
       struct {
@@ -44,8 +49,8 @@ typedef struct {
 } Ast;
 
 /// [failure] is allowed to be null.
-Ast Ast_parse_from_file_path(const cstr path, bool* failure);
+Ast Ast_parse_from_file_path(const cstr path, CompileFlags flags, bool* failure);
 void Ast_free(Ast* self);
 
-void Ast_print(Ast* self);
+void Ast_print(Ast self);
 

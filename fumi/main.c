@@ -32,9 +32,14 @@ i32 compile(const cstr file_path, CompileFlags flags) {
       return token_dump(file_path);
 
    bool failure;
-   Ast ast = Ast_parse_from_file_path(file_path, &failure);
+   Ast ast = Ast_parse_from_file_path(file_path, flags, &failure);
    if (failure) return 1;
+
+   if (flags.ast_dump) {
+      Ast_print(ast);
+   }
    
+   Ast_free(&ast);
    return 0;
 }
 
@@ -51,6 +56,8 @@ i32 main(i32 argc, cstr argv[]) {
    for (i32 i = 1; i < argc; ++i) {
       cstr_match(argv[i]) {
          ncstreq("--token-dump") flags.token_dump = true;
+         cstreq("--ast-dump")    flags.ast_dump   = true;
+         
          else {
             Vector_push(&path_indexes, &i);
          }

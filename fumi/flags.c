@@ -2,7 +2,8 @@
 
 CompileFlags CompileFlags_default() {
    return (CompileFlags) {
-      .token_dump = false
+      .token_dump = false,
+      .ast_dump = false
    };
 }
 

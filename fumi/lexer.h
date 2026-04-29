@@ -1,3 +1,5 @@
+#pragma once
+
 #include <mcu/core.h>
 #include <mcu/io.h>
 
