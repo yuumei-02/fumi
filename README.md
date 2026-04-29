@@ -13,9 +13,9 @@ for my library in order to compile the project, The compiler binary is located u
 The binary is compiled for x86-64 Linux.
 
 # Roadmap
-[ ] Asm generation for x86-64 Linux
-[ ] Turing complete
-[ ] Statically and strongly typed
-[ ] Self hosted
-[ ] Own assembler
+[ ] Asm generation for x86-64 Linux<br>
+[ ] Turing complete<br>
+[ ] Statically and strongly typed<br>
+[ ] Self hosted<br>
+[ ] Own assembler<br>
 
