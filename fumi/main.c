@@ -2,9 +2,11 @@
 #include <mcu/handlers.h>
 #include <mcu/io.h>
 
+#include "flags.h"
 #include "lexer.h"
+#include "parser.h"
 
-i32 compile(const cstr file_path) {
+i32 token_dump(const cstr file_path) {
    bool failure;
    Lexer lexer = Lexer_new(file_path, &failure);
    if (failure) return 1;
@@ -25,6 +27,17 @@ i32 compile(const cstr file_path) {
    return 0;
 }
 
+i32 compile(const cstr file_path, CompileFlags flags) {
+   if (flags.token_dump)
+      return token_dump(file_path);
+
+   bool failure;
+   Ast ast = Ast_parse_from_file_path(file_path, &failure);
+   if (failure) return 1;
+   
+   return 0;
+}
+
 i32 main(i32 argc, cstr argv[]) {
    if (argc < 2) {
       eprintln("Usage: %s file.fum", argv[0]);
@@ -32,8 +45,22 @@ i32 main(i32 argc, cstr argv[]) {
       return 1;
    }
 
+   CompileFlags flags = CompileFlags_default();
+   Vector path_indexes = Vector_new(sizeof(i32));
+
    for (i32 i = 1; i < argc; ++i) {
-      if (compile(argv[i])) return 1;
+      cstr_match(argv[i]) {
+         ncstreq("--token-dump") flags.token_dump = true;
+         else {
+            Vector_push(&path_indexes, &i);
+         }
+      }
+   }
+
+   foreach (path_indexes, i) {
+      i32 argi = *(i32*) Vector_get(&path_indexes, i);
+      if (compile(argv[argi], flags))
+         return 1;
    }
 
    return 0;

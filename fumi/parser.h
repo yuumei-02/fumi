@@ -44,7 +44,7 @@ typedef struct {
 } Ast;
 
 /// [failure] is allowed to be null.
-Ast Ast_parse_from_path(const cstr path, bool* failure);
+Ast Ast_parse_from_file_path(const cstr path, bool* failure);
 void Ast_free(Ast* self);
 
 void Ast_print(Ast* self);
