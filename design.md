@@ -69,9 +69,10 @@ enum error is
 end
 
 enum token is union of
-   Identifier(str),
-   IntLiteral(i64),
-   Keyword
+   Identifier : (str, position),
+   IntLiteral : (i64, position),
+   Keyword    : Position,
+   Eof
 end
 ```
 
