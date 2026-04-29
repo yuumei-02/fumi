@@ -25,6 +25,7 @@ end
 ```
 
 # Types and variables
+```Fumi
 infer := 69
 specify : i32 = 420;
 
@@ -34,4 +35,4 @@ struct vec2<T> is
 where
    T implements copy
 end
-
+```

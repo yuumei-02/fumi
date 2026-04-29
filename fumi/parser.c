@@ -19,13 +19,46 @@ typedef struct {
 #define exit_panic() \
    state->panic_mode = false;
 
+/// Returns a [Vector<ANI>]
+Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
+   Vector self = Vector_new(sizeof(ANI));
+
+   loop {
+      Token token = Lexer_next(lexer, &state->hard_failure);
+      if (state->hard_failure) return self;
+
+      switch (token.type) {
+         /* case TT_Identifier: { */
+         /* } break; */
+      
+         case TT_End: {
+            return self;
+         }
+
+         case TT_Eof: {
+            enter_panic();
+            report_unexpected_token(lexer->path, token);
+            return self;
+         }
+
+         default: {
+            if (state->panic_mode) break;
+            enter_panic();
+            report_unexpected_token(lexer->path, token);
+            Token_free(token);
+         }
+      }
+   }
+
+   return self;
+}
+   
 ANI parse_procedure(Lexer* lexer, Ast* ast, ParseState* state) {
    AstNode self = {
       .type = ANT_Procedure,
       .procedure = {
          .name = String_dummy(),
-         .return_type = String_from("void"),
-         .ANI_body = Vector_new(sizeof(ANI))
+         .return_type = String_from("void")
       }
    };
 
@@ -61,12 +94,9 @@ ANI parse_procedure(Lexer* lexer, Ast* ast, ParseState* state) {
          } break;
 
          case TT_Begin: {
-            expected[0] = TT_End;
-         } break;
-
-         case TT_End: {
+            self.procedure.ANI_body = parse_code_block(lexer, ast, state);
             goto finish_parsing;
-         }
+         } break;
       
          default: {
             panic("unreachable");
@@ -84,7 +114,6 @@ failure:
       
    if (self.procedure.return_type.length > 0)
       String_free(&self.procedure.return_type);
-      
    return -1;
 }
    

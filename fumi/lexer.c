@@ -267,3 +267,7 @@ failure:
    return token;
 }
 
+Token Lexer_peek(Lexer* self, bool* failure) {}
+
+void Lexer_undo(Lexer* self);
+
