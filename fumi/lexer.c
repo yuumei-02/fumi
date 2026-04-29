@@ -5,6 +5,7 @@
 
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #include "lexer.h"
 
@@ -83,7 +84,7 @@ void Token_print(const cstr path, Token self) {
    }
 }
 
-Lexer Lexer_new(const cstr path, bool* failure) {
+Lexer Lexer_new(const cstr path) {
    mcu_assert(path != nullptr, "path can't be null");
 
    Lexer self = {
@@ -96,24 +97,19 @@ Lexer Lexer_new(const cstr path, bool* failure) {
    self.handle = fopen(path, "r");
    if (self.handle == nullptr) {
       eprintln("[!] Failed to open file \"%s\", reason: \"%s\"", path, strerror(errno));
-      goto failure;
+      exit(errno);
    }
 
    self.peek = fgetc(self.handle);
    if (self.peek == EOF && ferror(self.handle)) {
       eprintln("[!] Failed to read from file \"%s\", reason: \"%s\"", path, strerror(errno));
-      goto failure;
+      exit(errno);
    }
 
    self.accumulated = String_new();
    self.Token_undo_stack = Vector_new(sizeof(Token));
    Lexer_define_keyword_hashmap();
 
-   if (failure != nullptr) *failure = false;
-   return self;
-
-failure:
-   if (failure != nullptr) *failure = true;
    return self;
 }
 
@@ -129,7 +125,7 @@ void Lexer_free(Lexer* self) {
    *self = (Lexer) {0};
 }
 
-bool Lexer_advance(Lexer* self) {
+void Lexer_advance(Lexer* self) {
    if (self->current == '\n') {
       self->y += 1;
       self->x = 1;
@@ -142,10 +138,8 @@ bool Lexer_advance(Lexer* self) {
 
    if (self->peek == EOF && ferror(self->handle)) {
       eprintln("[!] Failed to read from file \"%s\", reason: \"%s\"", self->path, strerror(errno));
-      return true;
+      exit(1);
    }
-
-   return false;
 }
 
 bool char_is_identifier_allowed(char self) {
@@ -156,7 +150,7 @@ bool char_is_identifier_allowed(char self) {
    return false;
 }
 
-Token Lexer_next(Lexer* self, bool* failure) {
+Token Lexer_next(Lexer* self) {
    mcu_assert(self != nullptr, "self can't be null");
 
    if (self->Token_undo_stack.length > 0) {
@@ -176,7 +170,7 @@ Token Lexer_next(Lexer* self, bool* failure) {
    bool int_is_negative = false;
 
    loop {
-      if (Lexer_advance(self)) goto failure;
+      Lexer_advance(self);
       if (self->current == EOF) break;
 
    reparse_char:
@@ -265,16 +259,11 @@ Token Lexer_next(Lexer* self, bool* failure) {
       }
    }
 
-   if (failure != nullptr) *failure = false;
-   return token;
-
-failure:
-   if (failure != nullptr) *failure = true;
    return token;
 }
 
-Token Lexer_peek(Lexer* self, bool* failure) {
-   Token peek = Lexer_next(self, failure);
+Token Lexer_peek(Lexer* self) {
+   Token peek = Lexer_next(self);
    Lexer_undo(self, peek);
 
    return peek;

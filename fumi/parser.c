@@ -9,7 +9,6 @@
 typedef struct {
    bool panic_mode;
    bool failure;
-   bool hard_failure;
 } ParseState;
 
 #define enter_panic() \
@@ -19,12 +18,9 @@ typedef struct {
 #define exit_panic() \
    state->panic_mode = false;
 
-// @todo: Change the lexer strategy to abort on file failure
-
 // @todo: implement proper expression parsing via precedence climbing
 ANI parse_expression(Lexer* lexer, Ast* ast, ParseState* state) {
-   Token token = Lexer_next(lexer, &state->hard_failure);
-   if (state->hard_failure) return -1;
+   Token token = Lexer_next(lexer);
 
    if (token.type != TT_IntLiteral) {
       enter_panic();
@@ -46,17 +42,14 @@ ANI parse_variable_decl(String name, Lexer* lexer, Ast* ast, ParseState* state) 
       .type = ANT_VariableDecl,
       .variable_decl = {
          .name = name,
-         .type = String_dummy(),
-         .expression = -1
       }
    };
 
-   Token token = Lexer_next(lexer, &state->hard_failure);
-   if (state->hard_failure) return -1;
+   Token token = Lexer_next(lexer);
 
    if (token.type == TT_Identifier) {
       self.variable_decl.type = token.str_literal;
-      token = Lexer_next(lexer, &state->hard_failure);
+      token = Lexer_next(lexer);
    } else {
       self.variable_decl.type = String_from("@infer");
    }
@@ -83,16 +76,13 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
    Vector self = Vector_new(sizeof(ANI));
 
    loop {
-      Token token = Lexer_next(lexer, &state->hard_failure);
-      if (state->hard_failure) return self;
+      Token token = Lexer_next(lexer);
 
       switch (token.type) {
          case TT_Identifier: {
             exit_panic();
             
-            Token peek = Lexer_next(lexer, &state->hard_failure);
-            if (state->hard_failure) return self;
-
+            Token peek = Lexer_next(lexer);
             if (peek.type != TT_Colon) {
                enter_panic();
                report_unexpected_token_expected(lexer->path, peek, TT_Colon);
@@ -142,9 +132,8 @@ ANI parse_procedure(Lexer* lexer, Ast* ast, ParseState* state) {
    u32 expected_len = 1;
 
    loop {
-      Token token = Lexer_next(lexer, &state->hard_failure);
-      if (state->hard_failure) goto failure;
-
+      Token token = Lexer_next(lexer);
+      
       bool found_expected = false;
       for (u32 i = 0; i < expected_len; ++i) {
          if (token.type == expected[i]) {
@@ -194,8 +183,7 @@ failure:
 }
    
 void parse_module(const cstr path, Ast* ast, ParseState* state) {
-   Lexer lexer = Lexer_new(path, &state->hard_failure);
-   if (state->hard_failure) return;
+   Lexer lexer = Lexer_new(path);
 
    AstNode self = {
       .type = ANT_Module,
@@ -206,8 +194,7 @@ void parse_module(const cstr path, Ast* ast, ParseState* state) {
    };
    
    loop {
-      Token token = Lexer_next(&lexer, &state->hard_failure);
-      if (state->hard_failure) goto cleanup;
+      Token token = Lexer_next(&lexer);
 
       switch (token.type) {
          case TT_Procedure: {
@@ -219,7 +206,7 @@ void parse_module(const cstr path, Ast* ast, ParseState* state) {
       
          case TT_Eof: {
             exit_panic();
-            goto cleanup;
+            goto finish_parsing;
          }
          
          default: {
@@ -231,7 +218,7 @@ void parse_module(const cstr path, Ast* ast, ParseState* state) {
       }
    }
 
-cleanup:
+finish_parsing:
    Vector_push(&ast->AstNode_modules, &self);
    Lexer_free(&lexer);
 }
@@ -246,8 +233,7 @@ Ast Ast_parse_from_file_path(const cstr path, bool* failure) {
 
    ParseState state = {0};
    parse_module(path, &self, &state);
-   if (state.hard_failure || state.failure)
-      goto failure;
+   if (state.failure) goto failure;
 
    if (failure != nullptr) *failure = false;
    return self;

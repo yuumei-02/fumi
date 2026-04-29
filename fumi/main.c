@@ -7,18 +7,12 @@
 #include "parser.h"
 
 i32 token_dump(const cstr file_path) {
-   bool failure;
-   Lexer lexer = Lexer_new(file_path, &failure);
-   if (failure) return 1;
+   Lexer lexer = Lexer_new(file_path);
 
    Token token;
    do {
-      token = Lexer_next(&lexer, &failure);
-      if (failure) {
-         Lexer_free(&lexer);
-         return 1;
-      }
-
+      token = Lexer_next(&lexer);
+      
       Token_print(lexer.path, token);
       Token_free(token);
    } while (token.type != TT_Eof);

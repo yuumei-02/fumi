@@ -58,11 +58,10 @@ const cstr TokenType_to_cstr(TokenType self);
 void Token_free(Token self);
 void Token_print(const cstr path, Token self);
 
-/// [failure] is allowed to be null
-Lexer Lexer_new(const cstr path, bool* failure);
+Lexer Lexer_new(const cstr path);
 void Lexer_free(Lexer* self);
 
-Token Lexer_next(Lexer* self, bool* failure);
-Token Lexer_peek(Lexer* self, bool* failure);
+Token Lexer_next(Lexer* self);
+Token Lexer_peek(Lexer* self);
 void Lexer_undo(Lexer* self, Token token);
 
