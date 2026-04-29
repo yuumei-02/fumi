@@ -19,6 +19,65 @@ typedef struct {
 #define exit_panic() \
    state->panic_mode = false;
 
+// @todo: Change the lexer strategy to abort on file failure
+
+// @todo: implement proper expression parsing via precedence climbing
+ANI parse_expression(Lexer* lexer, Ast* ast, ParseState* state) {
+   Token token = Lexer_next(lexer, &state->hard_failure);
+   if (state->hard_failure) return -1;
+
+   if (token.type != TT_IntLiteral) {
+      enter_panic();
+      report_unexpected_token_expected(lexer->path, token, TT_IntLiteral);
+      Token_free(token);
+      return -1;
+   }
+
+   Vector_push_create(&ast->AstNodes, ((AstNode) {
+      .type = ANT_IntLiteral,
+      .int_literal = token.int_literal
+   }));
+   
+   return (ANI) (ast->AstNodes.length - 1);
+}
+
+ANI parse_variable_decl(String name, Lexer* lexer, Ast* ast, ParseState* state) {
+   AstNode self = {
+      .type = ANT_VariableDecl,
+      .variable_decl = {
+         .name = name,
+         .type = String_dummy(),
+         .expression = -1
+      }
+   };
+
+   Token token = Lexer_next(lexer, &state->hard_failure);
+   if (state->hard_failure) return -1;
+
+   if (token.type == TT_Identifier) {
+      self.variable_decl.type = token.str_literal;
+      token = Lexer_next(lexer, &state->hard_failure);
+   } else {
+      self.variable_decl.type = String_from("@infer");
+   }
+
+   if (token.type != TT_Equals) {
+      enter_panic();
+      goto failure;
+   }
+
+   self.variable_decl.expression = parse_expression(lexer, ast, state);
+
+   Vector_push(&ast->AstNodes, &self);
+   return (ANI) (ast->AstNodes.length - 1);
+
+failure:
+   String_free(&name);
+   String_free(&self.variable_decl.type);
+
+   return -1;
+}
+
 /// Returns a [Vector<ANI>]
 Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
    Vector self = Vector_new(sizeof(ANI));
@@ -28,10 +87,27 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
       if (state->hard_failure) return self;
 
       switch (token.type) {
-         /* case TT_Identifier: { */
-         /* } break; */
+         case TT_Identifier: {
+            exit_panic();
+            
+            Token peek = Lexer_next(lexer, &state->hard_failure);
+            if (state->hard_failure) return self;
+
+            if (peek.type != TT_Colon) {
+               enter_panic();
+               report_unexpected_token_expected(lexer->path, peek, TT_Colon);
+               Lexer_undo(lexer, peek);
+               Token_free(token);
+               break;
+            }
+
+            ANI variable_decl = parse_variable_decl(token.str_literal, lexer, ast, state);
+            if (variable_decl == -1) break;
+            Vector_push(&self, &variable_decl);
+         } break;
       
          case TT_End: {
+            exit_panic();
             return self;
          }
 
@@ -42,10 +118,10 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
          }
 
          default: {
+            Token_free(token);
             if (state->panic_mode) break;
             enter_panic();
             report_unexpected_token(lexer->path, token);
-            Token_free(token);
          }
       }
    }
@@ -205,7 +281,7 @@ void Ast_free(Ast* self) {
             String_free(&node->variable_decl.type);
          } continue;
 
-         case ANT_IntLiteral: break;
+         case ANT_IntLiteral: continue;
          case ANT_Module: {
             panic("unreachable");
          }
@@ -263,8 +339,24 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
          }
       } return;
       
-      case ANT_VariableDecl: mcu_todo("not yet implemented"); return;
-      case ANT_IntLiteral:   mcu_todo("not yet implemented"); return;
+      case ANT_VariableDecl: {
+         indprintln("VariableDecl");
+         indprintln("├─name: %s", self->variable_decl.name.chars);
+         indprintln("├─type: %s", self->variable_decl.type.chars);
+         
+         if (self->variable_decl.expression == -1) {
+            indprintln("└─expression: empty");
+            return;
+         }
+         indprintln("└─expression:");
+
+         AstNode* node = Vector_get(&ast->AstNodes, self->variable_decl.expression);
+         AstNode_print(node, ast, indent + 1);
+      } return;
+      
+      case ANT_IntLiteral: {
+         indprintln("%ld", self->int_literal);
+      } return;
    }
 
    panic("unreachable");

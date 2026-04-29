@@ -8,7 +8,7 @@
 typedef enum {
    ANT_Module,
    ANT_Procedure,
-   
+
    ANT_VariableDecl,
 
    ANT_IntLiteral
