@@ -41,7 +41,7 @@ end
 
 # Variables
 ```Fumi
-type-inferred := i32 // inferred as i32
+type-inferred := 95 // inferred as i32
 specify : str = "type specified manually"
 ```
 
@@ -76,7 +76,8 @@ end
 ```
 
 # Modules;
-```std/io.fumi
+std/io.fumi
+```Fumi
 // Namespace is that of the file's name
 
 procedure println with format: str begin
@@ -84,7 +85,8 @@ procedure println with format: str begin
 end
 ```
 
-```std/path.fumi
+std/path.fumi
+```Fumi
 module "file-system" // Redefine this file's export namespace to be "file-system"
 
 procedure list-files begin
@@ -92,7 +94,8 @@ procedure list-files begin
 end
 ```
 
-```main.fumi
+main.fumi
+```Fumi
 import "std/io.fumi"
 import "std/path.fumi"
 import "std/path.fumi" as fs; // Alias module "file-system" to "fs" in the current file
