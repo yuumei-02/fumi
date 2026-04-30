@@ -1,16 +1,15 @@
 # About
 Fumi is a programming language made for recreational and learning purposes.
 
-# Note
-This project depends on a personal library that I'm not planning on releasing
-and thus, this project will not compile on your system.
-Do not ask for the library.
-You can try to make a drop-in replacement but I recommend that you ignore this project instead.
+# Building the project
+This project depends the Mektova-C-Utils library which you can find here: https://github.com/yuumei-02/Mektova-C-Utils
+The library needs to be installed system-wide in order for this project to compile.
+To build the project, run the following command inside the project folder.
+You can find the resulting binary named "fumi" under ./build/bin/
 
-# Binary
-If you're **that** desperate to get your hands on the compiler without making a drop-in replacement
-for my library in order to compile the project, The compiler binary is located under build/bin as "fumi".
-The binary is compiled for x86-64 Linux.
+```shell
+$ make fumi
+```
 
 # Roadmap
 [ ] Asm generation for x86-64 Linux<br>
