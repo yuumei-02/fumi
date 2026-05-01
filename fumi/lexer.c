@@ -41,6 +41,10 @@ const cstr TokenType_to_cstr(TokenType self) {
       // Single char
       case TT_Colon:  return "Colon";
       case TT_Equals: return "Equals";
+      case TT_Plus:   return "Plus";
+      case TT_Min:    return "Min";
+      case TT_Mul:    return "Mul";
+      case TT_Div:    return "Div";
 
       // Literals
       case TT_Identifier: return "Identifier";
@@ -60,6 +64,10 @@ void Token_free(Token self) {
       case TT_Eof:        break;
       case TT_Colon:      break;
       case TT_Equals:     break;
+      case TT_Plus:       break;
+      case TT_Min:        break;
+      case TT_Mul:        break;
+      case TT_Div:        break;
       case TT_IntLiteral: break;
       case TT_Procedure:  break;
       case TT_Begin:      break;
@@ -182,19 +190,25 @@ Token Lexer_next(Lexer* self) {
             switch (self->current) {
                case ':': token.type = TT_Colon;  return token;
                case '=': token.type = TT_Equals; return token;
+               case '+': token.type = TT_Plus;   return token;
+               case '*': token.type = TT_Mul;    return token;
 
                case '-': {
                   if (self->peek >= '0' && self->peek <= '9') {
                      token.length += 1;
                      int_is_negative = true;
                      self->mode = LM_Integer;
+                     break;
                   }
+
+                  token.type = TT_Min;
+                  return token;
                } break;
 
                case '/': {
                   switch (self->peek) {
                      case '/': self->mode = LM_Comment; break;
-                     default: break;
+                     default: token.type = TT_Div;      return token;
                   }
                } break;
 

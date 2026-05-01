@@ -18,30 +18,129 @@ typedef struct {
 #define exit_panic() \
    state->panic_mode = false;
 
-// @todo: implement proper expression parsing via precedence climbing
-ANI parse_expression(Lexer* lexer, Ast* ast, ParseState* state) {
-   Token token = Lexer_next(lexer);
+/// [is_operator] is allowed to be null
+Operator TokenType_to_operator(TokenType type, bool* is_operator) {
+   if (is_operator != nullptr) *is_operator = true;
 
-   if (token.type != TT_IntLiteral) {
-      enter_panic();
-      report_unexpected_token_expected(lexer->path, token, TT_IntLiteral);
-      Token_free(token);
-      return -1;
+   switch (type) {
+      case TT_Plus: return O_Add;
+      case TT_Min:  return O_Sub;
+      case TT_Mul:  return O_Mul;
+      case TT_Div:  return O_Div;
+      
+      default: {
+         if (is_operator != nullptr) *is_operator = false;
+         return -1;
+      }
    }
-
-   Vector_push_create(&ast->AstNodes, ((AstNode) {
-      .type = ANT_IntLiteral,
-      .int_literal = token.int_literal
-   }));
-   
-   return (ANI) (ast->AstNodes.length - 1);
 }
 
+const cstr Operator_to_cstr(Operator operator) {
+   switch (operator) {
+      case O_Add: return "Add";
+      case O_Sub: return "Sub";
+      case O_Mul: return "Mul";
+      case O_Div: return "Div";
+   }
+
+   return "Unknown";
+}
+
+// @reference: https://en.cppreference.com/c/language/operator_precedence
+isize Operator_get_precedence(Operator operator) {
+   switch (operator) {
+      case O_Mul: return 2;
+      case O_Div: return 2;
+      
+      case O_Add: return 1;
+      case O_Sub: return 1;
+   }
+
+   panic("unreachable");
+}
+
+OperatorAssociation Operator_get_association(Operator self) {
+   switch (self) {
+      case O_Add: return OA_Left;
+      case O_Sub: return OA_Left;
+      case O_Mul: return OA_Left;
+      case O_Div: return OA_Left;
+   }
+
+   panic("unreachable");
+}
+
+ANI parse_expression(Lexer* lexer, Ast* ast, ParseState* state, isize precendence);
+
+ANI parse_atom(Lexer* lexer, Ast* ast, ParseState* state) {
+   Token token = Lexer_next(lexer);
+
+   switch (token.type) {
+      case TT_IntLiteral: {
+         Vector_push_create(&ast->AstNodes, ((AstNode) {
+            .type = ANT_IntLiteral,
+            .int_literal = token.int_literal
+         }));
+
+         return (ANI) (ast->AstNodes.length - 1);
+      }
+
+      default: {
+         report_unexpected_token(lexer->path, token);
+         enter_panic();
+         return -1;
+      }
+   }
+}
+
+// @reference: https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
+ANI parse_expression(Lexer* lexer, Ast* ast, ParseState* state, isize precendence) {
+   ANI lhs = parse_atom(lexer, ast, state);
+   if (lhs == -1) return lhs;
+   
+   loop {
+      Token op_token = Lexer_next(lexer);
+
+      bool is_op;
+      Operator op = TokenType_to_operator(op_token.type, &is_op);
+      if (!is_op || Operator_get_precedence(op) < precendence) {
+         Lexer_undo(lexer, op_token);
+         break;
+      }
+
+      isize next_precedence = Operator_get_precedence(op);
+      if (Operator_get_association(op) == OA_Left)
+         next_precedence += 1;
+
+      ANI rhs = parse_expression(lexer, ast, state, next_precedence);
+
+      switch (op) {
+         case O_Add: [[fallthrough]];
+         case O_Sub: [[fallthrough]];
+         case O_Mul: [[fallthrough]];
+         case O_Div: {
+            Vector_push_create(&ast->AstNodes, ((AstNode) {
+               .type = ANT_BinOp,
+               .bin_op = {
+                  .operator = op,
+                  .left = lhs,
+                  .right = rhs
+               }
+            }));
+            lhs = (ANI) (ast->AstNodes.length - 1);
+         } break;
+      }
+   }
+
+   return lhs;
+}
+   
 ANI parse_variable_decl(String name, Lexer* lexer, Ast* ast, ParseState* state) {
    AstNode self = {
       .type = ANT_VariableDecl,
       .variable_decl = {
          .name = name,
+         .expression = -1
       }
    };
 
@@ -50,24 +149,27 @@ ANI parse_variable_decl(String name, Lexer* lexer, Ast* ast, ParseState* state) 
    if (token.type == TT_Identifier) {
       self.variable_decl.type = token.str_literal;
       token = Lexer_next(lexer);
-   } else {
-      self.variable_decl.type = String_from("@infer");
-   }
 
-   if (token.type != TT_Equals) {
+      if (token.type != TT_Equals) {
+         Lexer_undo(lexer, token);
+         goto success;
+      }
+   } else if (token.type == TT_Equals) {
+      self.variable_decl.type = String_from("@infer");
+   } else {
+      report_unexpected_token(lexer->path, token);
       enter_panic();
       goto failure;
    }
 
-   self.variable_decl.expression = parse_expression(lexer, ast, state);
+   self.variable_decl.expression = parse_expression(lexer, ast, state, -1);
 
+success:
    Vector_push(&ast->AstNodes, &self);
    return (ANI) (ast->AstNodes.length - 1);
 
 failure:
    String_free(&name);
-   String_free(&self.variable_decl.type);
-
    return -1;
 }
 
@@ -267,6 +369,7 @@ void Ast_free(Ast* self) {
             String_free(&node->variable_decl.type);
          } continue;
 
+         case ANT_BinOp:      continue;
          case ANT_IntLiteral: continue;
          case ANT_Module: {
             panic("unreachable");
@@ -281,12 +384,12 @@ void Ast_free(Ast* self) {
    *self = (Ast) {0};
 }
 
-// └├│─
 void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
    if (self == nullptr) return;
 
    #define indprintln(format, ...) \
-      printf("%*c", indent * 3, ' '); \
+      for (i32 i = 0; i < indent; ++i) \
+         printf("│  "); \
       println(format __VA_OPT__(,) __VA_ARGS__)
 
    switch (self->type) {
@@ -337,6 +440,17 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
          indprintln("└─expression:");
 
          AstNode* node = Vector_get(&ast->AstNodes, self->variable_decl.expression);
+         AstNode_print(node, ast, indent + 1);
+      } return;
+
+      case ANT_BinOp: {
+         indprintln("BinOp");
+         indprintln("├─operator: %s", Operator_to_cstr(self->bin_op.operator));
+         indprintln("├─left:");
+         AstNode* node = Vector_get(&ast->AstNodes, self->bin_op.left);
+         AstNode_print(node, ast, indent + 1);
+         indprintln("└─right:");
+         node = Vector_get(&ast->AstNodes, self->bin_op.right);
          AstNode_print(node, ast, indent + 1);
       } return;
       

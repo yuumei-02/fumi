@@ -10,6 +10,8 @@ typedef enum {
    // Single char
    TT_Colon,
    TT_Equals,
+   TT_Plus, TT_Min,
+   TT_Mul, TT_Div,
 
    // Literals
    TT_Identifier,

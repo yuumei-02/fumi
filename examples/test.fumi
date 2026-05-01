@@ -4,6 +4,6 @@ procedure empty begin
 end
 
 procedure main begin
-   result : i32 = 69420
+   result : i32 = 5 + 2 * end
 end
 

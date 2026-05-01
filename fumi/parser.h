@@ -6,12 +6,25 @@
 #include "flags.h"
 
 typedef enum {
+   O_Add,
+   O_Sub,
+   O_Div,
+   O_Mul,
+} Operator;
+
+typedef enum {
+   OA_Left,
+   OA_Right
+} OperatorAssociation;
+
+typedef enum {
    ANT_Module,
    ANT_Procedure,
 
    ANT_VariableDecl,
 
-   ANT_IntLiteral
+   ANT_BinOp,
+   ANT_IntLiteral,
 } AstNodeType;
 
 /// AstNodeIndex
@@ -38,6 +51,12 @@ typedef struct {
          String type;
          ANI expression;
       } variable_decl;
+
+      struct {
+         Operator operator;
+         ANI left;
+         ANI right;
+      } bin_op;
 
       i64 int_literal;
    };
