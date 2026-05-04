@@ -30,6 +30,8 @@ void Lexer_define_keyword_hashmap() {
    def_keyword("begin", TT_Begin);
    def_keyword("end", TT_End);
    def_keyword("return", TT_Return);
+   def_keyword("if", TT_If);
+   def_keyword("then", TT_Then);
 
    #undef def_keyword
 }
@@ -72,6 +74,8 @@ const cstr TokenType_to_cstr(TokenType self) {
       case TT_Begin:     return "Begin";
       case TT_End:       return "End";
       case TT_Return:    return "Return";
+      case TT_If:        return "If";
+      case TT_Then:      return "Then";
    }
 
    return "Unknown";

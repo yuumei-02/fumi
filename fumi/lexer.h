@@ -29,7 +29,8 @@ typedef enum {
    // Keywords
    TT_Procedure,
    TT_Begin, TT_End,
-   TT_Return
+   TT_Return,
+   TT_If, TT_Then
 } TokenType;
 
 typedef struct {

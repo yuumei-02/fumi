@@ -30,6 +30,7 @@ typedef enum {
 
    ANT_VariableDecl,
    ANT_ReturnStmt,
+   ANT_IfStmt,
 
    ANT_BinOp,
    ANT_IntLiteral,
@@ -60,6 +61,12 @@ typedef struct {
          String type;
          ANI expression;
       } variable_decl;
+
+      struct {
+         ANI expression;
+         /* ANI next_branch; */
+         Vector ANI_body;
+      } if_stmt;
 
       struct {
          ANI expression;

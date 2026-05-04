@@ -230,7 +230,7 @@ ANI parse_expression_impl(Lexer* lexer, Ast* ast, ParseState* state, isize prece
 
    return lhs;
 }
-   
+
 ANI parse_variable_decl(String name, Lexer* lexer, Ast* ast, ParseState* state) {
    AstNode self = {
       .type = ANT_VariableDecl,
@@ -282,6 +282,33 @@ ANI parse_return_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
 }
 
 /// Returns a [Vector<ANI>]
+Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state);
+
+ANI parse_if_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
+   AstNode self = {
+      .type = ANT_IfStmt
+   };
+
+   self.if_stmt.expression = parse_expression(lexer, ast, state);
+   if (self.if_stmt.expression < 0) {
+      enter_panic();
+      return -1;
+   }
+
+   Token next = Lexer_next(lexer);
+   if (next.type != TT_Then) {
+      enter_panic();
+      report_unexpected_token_expected(lexer->path, next, TT_Then);
+      return -1;
+   }
+
+   self.if_stmt.ANI_body = parse_code_block(lexer, ast, state);
+   
+   Vector_push(&ast->AstNodes, &self);
+   return (ANI) (ast->AstNodes.length - 1);
+}
+
+/// Returns a [Vector<ANI>]
 Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
    Vector self = Vector_new(sizeof(ANI));
 
@@ -290,25 +317,34 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
 
       switch (token.type) {
          case TT_Identifier: {
-            exit_panic();
-            
             Token peek = Lexer_next(lexer);
             if (peek.type != TT_Colon) {
-               enter_panic();
-               report_unexpected_token_expected(lexer->path, peek, TT_Colon);
+               if (!state->panic_mode) {
+                  enter_panic();
+                  report_unexpected_token_expected(lexer->path, peek, TT_Colon);
+               }
                Lexer_undo(lexer, peek);
                Token_free(token);
                break;
             }
 
+            exit_panic();
             ANI variable_decl = parse_variable_decl(token.str_literal, lexer, ast, state);
-            if (variable_decl == -1) break;
+            if (variable_decl < 0) break;
             Vector_push(&self, &variable_decl);
          } break;
 
          case TT_Return: {
+            exit_panic();
             ANI return_stmt = parse_return_stmt(lexer, ast, state);
             Vector_push(&self, &return_stmt);
+         } break;
+
+         case TT_If: {
+            exit_panic();
+            ANI if_stmt = parse_if_stmt(lexer, ast, state);
+            if (if_stmt < 0) break;
+            Vector_push(&self, &if_stmt);
          } break;
       
          case TT_End: {
@@ -491,6 +527,10 @@ void Ast_free(Ast* self) {
             String_free(&node->variable);
          } continue;
 
+         case ANT_IfStmt: {
+            Vector_free(&node->if_stmt.ANI_body);
+         } continue;
+
          case ANT_ReturnStmt: continue;
          case ANT_BinOp:      continue;
          case ANT_IntLiteral: continue;
@@ -564,6 +604,27 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
 
          AstNode* node = Vector_get(&ast->AstNodes, self->variable_decl.expression);
          AstNode_print(node, ast, indent + 1);
+      } return;
+
+      case ANT_IfStmt: {
+         indprintln("IfStmt");
+         indprintln("├─expression:");
+         
+         mcu_assert(self->if_stmt.expression != -1, "If statements must always have an expression");
+         AstNode* node = Vector_get(&ast->AstNodes, self->if_stmt.expression);
+         AstNode_print(node, ast, indent + 1);
+         
+         if (self->if_stmt.ANI_body.length <= 0) {
+            indprintln("└─body: empty");
+         } else {
+            indprintln("└─body:");
+         }
+
+         foreach (self->if_stmt.ANI_body, i) {
+            ANI* node_i = Vector_get(&self->if_stmt.ANI_body, i);
+            AstNode* node = Vector_get(&ast->AstNodes, *node_i);
+            AstNode_print(node, ast, indent + 1);
+         }
       } return;
 
       case ANT_ReturnStmt: {
