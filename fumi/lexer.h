@@ -14,6 +14,15 @@ typedef enum {
    TT_Plus, TT_Min,
    TT_Mul, TT_Div,
    TT_NewLine,
+   TT_Less, TT_Great,
+
+   // Double char
+   TT_DoubleEquals,
+   TT_LessEquals,
+   TT_GreatEquals,
+   TT_NotEquals,
+   TT_DoubleAnd,
+   TT_DoublePipe,
 
    // Literals
    TT_Identifier,

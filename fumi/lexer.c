@@ -48,6 +48,16 @@ const cstr TokenType_to_cstr(TokenType self) {
       case TT_Mul:     return "Mul";
       case TT_Div:     return "Div";
       case TT_NewLine: return "NewLine";
+      case TT_Less:    return "Less";
+      case TT_Great:   return "Great";
+
+      // Double char
+      case TT_DoubleEquals: return "DoubleEquals";
+      case TT_LessEquals:   return "LessEquals";
+      case TT_GreatEquals:  return "GreatEquals";
+      case TT_NotEquals:    return "NotEquals";
+      case TT_DoubleAnd:    return "DoubleAnd";
+      case TT_DoublePipe:   return "DoublePipe";
 
       // Literals
       case TT_Identifier: return "Identifier";
@@ -171,6 +181,16 @@ Token Lexer_next(Lexer* self) {
 
    bool int_is_negative = false;
 
+   #define return_single(token_type) \
+      token.type = token_type; \
+      return token
+
+   #define return_double(token_type) \
+      Lexer_advance(self); \
+      token.type = token_type; \
+      token.length = 2; \
+      return token
+
    loop {
       Lexer_advance(self);
       if (self->current == EOF) break;
@@ -182,12 +202,11 @@ Token Lexer_next(Lexer* self) {
             token.y = self->y;
 
             switch (self->current) {
-               case ':':  token.type = TT_Colon;   return token;
-               case ';':  token.type = TT_Semicol; return token;
-               case '=':  token.type = TT_Equals;  return token;
-               case '+':  token.type = TT_Plus;    return token;
-               case '*':  token.type = TT_Mul;     return token;
-               case '\n': token.type = TT_NewLine; return token;
+               case ':':  return_single(TT_Colon);
+               case ';':  return_single(TT_Semicol);
+               case '+':  return_single(TT_Plus);
+               case '*':  return_single(TT_Mul);
+               case '\n': return_single(TT_NewLine);
 
                case '-': {
                   if (self->peek >= '0' && self->peek <= '9') {
@@ -204,11 +223,50 @@ Token Lexer_next(Lexer* self) {
                case '/': {
                   switch (self->peek) {
                      case '/': self->mode = LM_Comment; break;
-                     default: token.type = TT_Div;      return token;
+                     default: return_single(TT_Div);
                   }
                } break;
 
-               case ' ':  break;
+               case '=': {
+                  switch (self->peek) {
+                     case '=': return_double(TT_DoubleEquals);
+                     default:  return_single(TT_Equals);
+                  }
+               } break;
+
+               case '<': {
+                  switch (self->peek) {
+                     case '=': return_double(TT_LessEquals);
+                     default:  return_single(TT_Less);
+                  }
+               } break;
+
+               case '>': {
+                  switch (self->peek) {
+                     case '=': return_double(TT_GreatEquals);
+                     default:  return_single(TT_Great);
+                  }
+               } break;
+
+               case '!': {
+                  if (self->peek == '=') {
+                     return_double(TT_NotEquals);
+                  }
+               } break;
+
+               case '&': {
+                  if (self->peek == '&') {
+                     return_double(TT_DoubleAnd);
+                  }
+               } break;
+
+               case '|': {
+                  if (self->peek == '|') {
+                     return_double(TT_DoublePipe);
+                  }
+               } break;
+
+               case ' ': break;
 
                default: {
                   if (self->current >= '0' && self->current <= '9') {

@@ -4,10 +4,8 @@ procedure empty begin
 end
 
 procedure main begin
-   offset := 10
-   result : i32 = 5 + 2 * 3 + offset +
-      4
+   result := 0 || 1
 
-   return 10 + 2
+   return result
 end
 

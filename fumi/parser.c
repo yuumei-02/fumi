@@ -27,6 +27,15 @@ Operator TokenType_to_operator(TokenType type, bool* is_operator) {
       case TT_Min:  return O_Sub;
       case TT_Mul:  return O_Mul;
       case TT_Div:  return O_Div;
+
+      case TT_DoubleEquals: return O_Is;
+      case TT_NotEquals:    return O_IsNot;
+      case TT_Less:         return O_Less;
+      case TT_Great:        return O_Great;
+      case TT_LessEquals:   return O_LessEqu;
+      case TT_GreatEquals:  return O_GreatEqu;
+      case TT_DoubleAnd:    return O_And;
+      case TT_DoublePipe:   return O_Or;
       
       default: {
          if (is_operator != nullptr) *is_operator = false;
@@ -41,6 +50,15 @@ const cstr Operator_to_cstr(Operator operator) {
       case O_Sub: return "Sub";
       case O_Mul: return "Mul";
       case O_Div: return "Div";
+
+      case O_Less:     return "Less";
+      case O_Great:    return "Great";
+      case O_LessEqu:  return "LessEqu";
+      case O_GreatEqu: return "GreatEqu";
+      case O_Is:       return "Is";
+      case O_IsNot:    return "IsNot";
+      case O_And:      return "And";
+      case O_Or:       return "Or";
    }
 
    return "Unknown";
@@ -49,13 +67,30 @@ const cstr Operator_to_cstr(Operator operator) {
 // @reference: https://en.cppreference.com/c/language/operator_precedence
 isize Operator_get_precedence(Operator operator) {
    switch (operator) {
-      case O_Mul: return 2;
-      case O_Div: return 2;
+      case O_Mul:       return 7;
+      case O_Div:       return 7;
       
-      case O_Add: return 1;
-      case O_Sub: return 1;
+      case O_Add:       return 6;
+      case O_Sub:       return 6;
+      
+      case O_Less:      return 5;
+      case O_Great:     return 5;
+      case O_LessEqu:   return 5;
+      case O_GreatEqu:  return 5;
+      
+      case O_Is:        return 4;
+      case O_IsNot:     return 4;
+      
+      case O_And:       return 3;
+      case O_Or:        return 2;
+      
+      /* case O_Equ:       return 1; */
+      /* case O_PlusEqu:   return 1; */
+      /* case O_MinEqu:    return 1; */
+      /* case O_MulEqu:    return 1; */
+      /* case O_DivEqu:    return 1; */
    }
-
+   
    panic("unreachable");
 }
 
@@ -65,9 +100,24 @@ OperatorAssociation Operator_get_association(Operator self) {
       case O_Sub: return OA_Left;
       case O_Mul: return OA_Left;
       case O_Div: return OA_Left;
-   }
 
-   panic("unreachable");
+      case O_Is:        return OA_Left;
+      case O_IsNot:     return OA_Left;
+      case O_And:       return OA_Left;
+      case O_Or:        return OA_Left;
+      case O_Less:      return OA_Left;
+      case O_Great:     return OA_Left;
+      case O_LessEqu:   return OA_Left;
+      case O_GreatEqu:  return OA_Left;
+
+      /* case O_Equ:     return OA_Right; */
+      /* case O_PlusEqu: return OA_Right; */
+      /* case O_MinEqu:  return OA_Right; */
+      /* case O_MulEqu:  return OA_Right; */
+      /* case O_DivEqu:  return OA_Right; */
+   }
+   
+   unreachable();
 }
 
 ANI parse_expression_impl(Lexer* lexer, Ast* ast, ParseState* state, isize precendence);
@@ -136,10 +186,18 @@ ANI parse_expression_impl(Lexer* lexer, Ast* ast, ParseState* state, isize prece
       ANI rhs = parse_expression_impl(lexer, ast, state, next_precedence);
 
       switch (op) {
-         case O_Add: [[fallthrough]];
-         case O_Sub: [[fallthrough]];
-         case O_Mul: [[fallthrough]];
-         case O_Div: {
+         case O_Add:      [[fallthrough]];
+         case O_Sub:      [[fallthrough]];
+         case O_Mul:      [[fallthrough]];
+         case O_Div:      [[fallthrough]];
+         case O_Less:     [[fallthrough]];
+         case O_Great:    [[fallthrough]];
+         case O_LessEqu:  [[fallthrough]];
+         case O_GreatEqu: [[fallthrough]];
+         case O_Is:       [[fallthrough]];
+         case O_IsNot:    [[fallthrough]];
+         case O_And:      [[fallthrough]];
+         case O_Or: {
             Vector_push_create(&ast->AstNodes, ((AstNode) {
                .type = ANT_BinOp,
                .bin_op = {

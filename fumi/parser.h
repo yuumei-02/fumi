@@ -6,10 +6,13 @@
 #include "flags.h"
 
 typedef enum {
-   O_Add,
-   O_Sub,
-   O_Div,
-   O_Mul,
+   O_Add, O_Sub, // + -
+   O_Div, O_Mul, // / *
+
+   O_Less,    O_Great,    // < >
+   O_LessEqu, O_GreatEqu, // <= >=
+   O_Is,      O_IsNot,    // == !=
+   O_And,     O_Or,       // && ||
 } Operator;
 
 typedef enum {
