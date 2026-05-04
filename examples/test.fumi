@@ -4,6 +4,7 @@ procedure empty begin
 end
 
 procedure main begin
-   result : i32 = 5 + 2 * 3
+   offset := 10
+   result : i32 = 5 + 2 * 3 + offset
 end
 

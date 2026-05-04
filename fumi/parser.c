@@ -72,6 +72,7 @@ OperatorAssociation Operator_get_association(Operator self) {
 
 ANI parse_expression(Lexer* lexer, Ast* ast, ParseState* state, isize precendence);
 
+// @todo: check for potential memory leak, I think that we should call Token_free here
 ANI parse_atom(Lexer* lexer, Ast* ast, ParseState* state) {
    Token token = Lexer_next(lexer);
 
@@ -80,6 +81,15 @@ ANI parse_atom(Lexer* lexer, Ast* ast, ParseState* state) {
          Vector_push_create(&ast->AstNodes, ((AstNode) {
             .type = ANT_IntLiteral,
             .int_literal = token.int_literal
+         }));
+
+         return (ANI) (ast->AstNodes.length - 1);
+      }
+
+      case TT_Identifier: {
+         Vector_push_create(&ast->AstNodes, ((AstNode) {
+            .type = ANT_Variable,
+            .variable = token.str_literal
          }));
 
          return (ANI) (ast->AstNodes.length - 1);
@@ -369,6 +379,10 @@ void Ast_free(Ast* self) {
             String_free(&node->variable_decl.type);
          } continue;
 
+         case ANT_Variable: {
+            String_free(&node->variable);
+         } continue;
+
          case ANT_BinOp:      continue;
          case ANT_IntLiteral: continue;
          case ANT_Module: {
@@ -456,6 +470,11 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       
       case ANT_IntLiteral: {
          indprintln("%ld", self->int_literal);
+      } return;
+
+      case ANT_Variable: {
+         indprintln("Variable");
+         indprintln("└─name: %s", self->variable.chars);
       } return;
    }
 

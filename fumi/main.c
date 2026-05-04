@@ -2,6 +2,8 @@
 #include <mcu/handlers.h>
 #include <mcu/io.h>
 
+#include <time.h>
+
 #include "flags.h"
 #include "lexer.h"
 #include "parser.h"
@@ -25,14 +27,21 @@ i32 compile(const cstr file_path, CompileFlags flags) {
    if (flags.token_dump)
       return token_dump(file_path);
 
+   time_t start = clock();
    bool failure;
    Ast ast = Ast_parse_from_file_path(file_path, &failure);
    if (failure) return 1;
+   time_t end = clock();
+   double front_end_time = (double) (end - start) / CLOCKS_PER_SEC;
 
    if (flags.ast_dump) {
       Ast_print(ast);
    }
-   
+
+   println("Compilation statistics");
+   println("Target: x86-64 Linux");
+   println("frontend: %.6lfs", front_end_time);
+   println("[i] Compilation successfull");
    Ast_free(&ast);
    return 0;
 }
