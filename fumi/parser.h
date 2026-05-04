@@ -7,12 +7,16 @@
 
 typedef enum {
    O_Add, O_Sub, // + -
-   O_Div, O_Mul, // / *
+   O_Mul, O_Div, // * /
 
    O_Less,    O_Great,    // < >
    O_LessEqu, O_GreatEqu, // <= >=
    O_Is,      O_IsNot,    // == !=
    O_And,     O_Or,       // && ||
+
+   O_Equ,               // =
+   O_PlusEqu, O_MinEqu, // += -=
+   O_MulEqu,  O_DivEqu, // *= /=
 } Operator;
 
 typedef enum {

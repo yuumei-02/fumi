@@ -3,8 +3,10 @@
 procedure empty begin
 end
 
+// @todo: allow for standalone expressions inside code blocks
 procedure main begin
-   result := 0 || 1
+   old-result : i32 = 0
+   result := old-result *= 4
 
    return result
 end

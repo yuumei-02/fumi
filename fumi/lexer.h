@@ -9,20 +9,18 @@ typedef enum {
    TT_Eof,
 
    // Single char
-   TT_Colon, TT_Semicol,
-   TT_Equals,
-   TT_Plus, TT_Min,
-   TT_Mul, TT_Div,
-   TT_NewLine,
-   TT_Less, TT_Great,
+   TT_Colon,  TT_Semicol,
+   TT_Equals, TT_NewLine,
+   TT_Plus,   TT_Min,
+   TT_Mul,    TT_Div,
+   TT_Less,   TT_Great,
 
    // Double char
-   TT_DoubleEquals,
-   TT_LessEquals,
-   TT_GreatEquals,
-   TT_NotEquals,
-   TT_DoubleAnd,
-   TT_DoublePipe,
+   TT_DoubleEquals, TT_NotEquals,
+   TT_LessEquals,   TT_GreatEquals,
+   TT_DoubleAnd,    TT_DoublePipe,
+   TT_PlusEquals,   TT_MinEquals,
+   TT_MulEquals,    TT_DivEquals,
 
    // Literals
    TT_Identifier,

@@ -36,6 +36,12 @@ Operator TokenType_to_operator(TokenType type, bool* is_operator) {
       case TT_GreatEquals:  return O_GreatEqu;
       case TT_DoubleAnd:    return O_And;
       case TT_DoublePipe:   return O_Or;
+
+      case TT_Equals:     return O_Equ;
+      case TT_PlusEquals: return O_PlusEqu;
+      case TT_MinEquals:  return O_MinEqu;
+      case TT_MulEquals:  return O_MulEqu;
+      case TT_DivEquals:  return O_DivEqu;
       
       default: {
          if (is_operator != nullptr) *is_operator = false;
@@ -59,6 +65,12 @@ const cstr Operator_to_cstr(Operator operator) {
       case O_IsNot:    return "IsNot";
       case O_And:      return "And";
       case O_Or:       return "Or";
+
+      case O_Equ:     return "Equ";
+      case O_PlusEqu: return "PlusEqu";
+      case O_MinEqu:  return "MinEqu";
+      case O_MulEqu:  return "MulEqu";
+      case O_DivEqu:  return "DivEqu";
    }
 
    return "Unknown";
@@ -84,11 +96,11 @@ isize Operator_get_precedence(Operator operator) {
       case O_And:       return 3;
       case O_Or:        return 2;
       
-      /* case O_Equ:       return 1; */
-      /* case O_PlusEqu:   return 1; */
-      /* case O_MinEqu:    return 1; */
-      /* case O_MulEqu:    return 1; */
-      /* case O_DivEqu:    return 1; */
+      case O_Equ:       return 1;
+      case O_PlusEqu:   return 1;
+      case O_MinEqu:    return 1;
+      case O_MulEqu:    return 1;
+      case O_DivEqu:    return 1;
    }
    
    panic("unreachable");
@@ -110,11 +122,11 @@ OperatorAssociation Operator_get_association(Operator self) {
       case O_LessEqu:   return OA_Left;
       case O_GreatEqu:  return OA_Left;
 
-      /* case O_Equ:     return OA_Right; */
-      /* case O_PlusEqu: return OA_Right; */
-      /* case O_MinEqu:  return OA_Right; */
-      /* case O_MulEqu:  return OA_Right; */
-      /* case O_DivEqu:  return OA_Right; */
+      case O_Equ:     return OA_Right;
+      case O_PlusEqu: return OA_Right;
+      case O_MinEqu:  return OA_Right;
+      case O_MulEqu:  return OA_Right;
+      case O_DivEqu:  return OA_Right;
    }
    
    unreachable();
@@ -197,7 +209,12 @@ ANI parse_expression_impl(Lexer* lexer, Ast* ast, ParseState* state, isize prece
          case O_Is:       [[fallthrough]];
          case O_IsNot:    [[fallthrough]];
          case O_And:      [[fallthrough]];
-         case O_Or: {
+         case O_Or:       [[fallthrough]];
+         case O_Equ:      [[fallthrough]];
+         case O_PlusEqu:  [[fallthrough]];
+         case O_MinEqu:   [[fallthrough]];
+         case O_MulEqu:   [[fallthrough]];
+         case O_DivEqu: {
             Vector_push_create(&ast->AstNodes, ((AstNode) {
                .type = ANT_BinOp,
                .bin_op = {

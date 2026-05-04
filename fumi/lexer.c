@@ -58,6 +58,10 @@ const cstr TokenType_to_cstr(TokenType self) {
       case TT_NotEquals:    return "NotEquals";
       case TT_DoubleAnd:    return "DoubleAnd";
       case TT_DoublePipe:   return "DoublePipe";
+      case TT_PlusEquals:   return "PlusEquals";
+      case TT_MinEquals:    return "MinEquals";
+      case TT_MulEquals:    return "MulEquals";
+      case TT_DivEquals:    return "DivEquals";
 
       // Literals
       case TT_Identifier: return "Identifier";
@@ -204,9 +208,14 @@ Token Lexer_next(Lexer* self) {
             switch (self->current) {
                case ':':  return_single(TT_Colon);
                case ';':  return_single(TT_Semicol);
-               case '+':  return_single(TT_Plus);
-               case '*':  return_single(TT_Mul);
                case '\n': return_single(TT_NewLine);
+
+               case '+': {
+                  switch (self->peek) {
+                     case '=': return_double(TT_PlusEquals);
+                     default:  return_single(TT_Plus);
+                  }
+               } break;
 
                case '-': {
                   if (self->peek >= '0' && self->peek <= '9') {
@@ -216,14 +225,24 @@ Token Lexer_next(Lexer* self) {
                      break;
                   }
 
-                  token.type = TT_Min;
-                  return token;
+                  switch (self->peek) {
+                     case '=': return_double(TT_MinEquals);
+                     default:  return_single(TT_Min);
+                  }
+               } break;
+
+               case '*': {
+                  switch (self->peek) {
+                     case '=': return_double(TT_MulEquals);
+                     default:  return_single(TT_Mul);
+                  }
                } break;
 
                case '/': {
                   switch (self->peek) {
                      case '/': self->mode = LM_Comment; break;
-                     default: return_single(TT_Div);
+                     case '=': return_double(TT_DivEquals);
+                     default:  return_single(TT_Div);
                   }
                } break;
 
