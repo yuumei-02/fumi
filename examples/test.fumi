@@ -5,6 +5,9 @@ end
 
 procedure main begin
    offset := 10
-   result : i32 = 5 + 2 * 3 + offset
+   result : i32 = 5 + 2 * 3 + offset +
+      4
+
+   return 10 + 2
 end
 

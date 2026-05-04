@@ -3,15 +3,17 @@
 #include <mcu/core.h>
 #include <mcu/io.h>
 
+// @note: don't forget to update Token_free when adding new token types
 typedef enum {
    // Miscellaneous
    TT_Eof,
 
    // Single char
-   TT_Colon,
+   TT_Colon, TT_Semicol,
    TT_Equals,
    TT_Plus, TT_Min,
    TT_Mul, TT_Div,
+   TT_NewLine,
 
    // Literals
    TT_Identifier,
@@ -19,7 +21,8 @@ typedef enum {
 
    // Keywords
    TT_Procedure,
-   TT_Begin, TT_End
+   TT_Begin, TT_End,
+   TT_Return
 } TokenType;
 
 typedef struct {

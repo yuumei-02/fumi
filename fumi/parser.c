@@ -70,10 +70,10 @@ OperatorAssociation Operator_get_association(Operator self) {
    panic("unreachable");
 }
 
-ANI parse_expression(Lexer* lexer, Ast* ast, ParseState* state, isize precendence);
+ANI parse_expression_impl(Lexer* lexer, Ast* ast, ParseState* state, isize precendence);
 
-// @todo: check for potential memory leak, I think that we should call Token_free here
 ANI parse_atom(Lexer* lexer, Ast* ast, ParseState* state) {
+retry:
    Token token = Lexer_next(lexer);
 
    switch (token.type) {
@@ -95,16 +95,27 @@ ANI parse_atom(Lexer* lexer, Ast* ast, ParseState* state) {
          return (ANI) (ast->AstNodes.length - 1);
       }
 
+      case TT_NewLine: goto retry;
+
       default: {
          report_unexpected_token(lexer->path, token);
          enter_panic();
+         Token_free(token);
          return -1;
       }
    }
 }
 
+ANI parse_expression(Lexer* lexer, Ast* ast, ParseState* state) {
+   Token peek = Lexer_next(lexer);
+   if (peek.type == TT_NewLine) return -1;
+   Lexer_undo(lexer, peek);
+   
+   return parse_expression_impl(lexer, ast, state, -1);
+}
+
 // @reference: https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
-ANI parse_expression(Lexer* lexer, Ast* ast, ParseState* state, isize precendence) {
+ANI parse_expression_impl(Lexer* lexer, Ast* ast, ParseState* state, isize precendence) {
    ANI lhs = parse_atom(lexer, ast, state);
    if (lhs == -1) return lhs;
    
@@ -122,7 +133,7 @@ ANI parse_expression(Lexer* lexer, Ast* ast, ParseState* state, isize precendenc
       if (Operator_get_association(op) == OA_Left)
          next_precedence += 1;
 
-      ANI rhs = parse_expression(lexer, ast, state, next_precedence);
+      ANI rhs = parse_expression_impl(lexer, ast, state, next_precedence);
 
       switch (op) {
          case O_Add: [[fallthrough]];
@@ -172,7 +183,7 @@ ANI parse_variable_decl(String name, Lexer* lexer, Ast* ast, ParseState* state) 
       goto failure;
    }
 
-   self.variable_decl.expression = parse_expression(lexer, ast, state, -1);
+   self.variable_decl.expression = parse_expression(lexer, ast, state);
 
 success:
    Vector_push(&ast->AstNodes, &self);
@@ -181,6 +192,18 @@ success:
 failure:
    String_free(&name);
    return -1;
+}
+
+ANI parse_return_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
+   AstNode self = {
+      .type = ANT_ReturnStmt,
+      .return_stmt = {
+         .expression = parse_expression(lexer, ast, state)
+      }
+   };
+
+   Vector_push(&ast->AstNodes, &self);
+   return (ANI) (ast->AstNodes.length - 1);
 }
 
 /// Returns a [Vector<ANI>]
@@ -207,6 +230,11 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
             if (variable_decl == -1) break;
             Vector_push(&self, &variable_decl);
          } break;
+
+         case TT_Return: {
+            ANI return_stmt = parse_return_stmt(lexer, ast, state);
+            Vector_push(&self, &return_stmt);
+         } break;
       
          case TT_End: {
             exit_panic();
@@ -218,6 +246,8 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
             report_unexpected_token(lexer->path, token);
             return self;
          }
+
+         case TT_NewLine: break;
 
          default: {
             Token_free(token);
@@ -245,6 +275,7 @@ ANI parse_procedure(Lexer* lexer, Ast* ast, ParseState* state) {
 
    loop {
       Token token = Lexer_next(lexer);
+      if (token.type == TT_NewLine) continue;
       
       bool found_expected = false;
       for (u32 i = 0; i < expected_len; ++i) {
@@ -315,6 +346,8 @@ void parse_module(const cstr path, Ast* ast, ParseState* state) {
             if (procedure == -1) break;
             Vector_push(&self.module.ANI_procedures, &procedure);
          } break;
+
+         case TT_NewLine: break;
       
          case TT_Eof: {
             exit_panic();
@@ -383,6 +416,7 @@ void Ast_free(Ast* self) {
             String_free(&node->variable);
          } continue;
 
+         case ANT_ReturnStmt: continue;
          case ANT_BinOp:      continue;
          case ANT_IntLiteral: continue;
          case ANT_Module: {
@@ -454,6 +488,18 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
          indprintln("└─expression:");
 
          AstNode* node = Vector_get(&ast->AstNodes, self->variable_decl.expression);
+         AstNode_print(node, ast, indent + 1);
+      } return;
+
+      case ANT_ReturnStmt: {
+         indprintln("ReturnStmt");
+         if (self->return_stmt.expression == -1) {
+            indprintln("└─expression: empty");
+            return;
+         }
+         indprintln("└─expression:");
+
+         AstNode* node = Vector_get(&ast->AstNodes, self->return_stmt.expression);
          AstNode_print(node, ast, indent + 1);
       } return;
 

@@ -29,6 +29,7 @@ void Lexer_define_keyword_hashmap() {
    def_keyword("procedure", TT_Procedure);
    def_keyword("begin", TT_Begin);
    def_keyword("end", TT_End);
+   def_keyword("return", TT_Return);
 
    #undef def_keyword
 }
@@ -39,12 +40,14 @@ const cstr TokenType_to_cstr(TokenType self) {
       case TT_Eof: return "Eof";
 
       // Single char
-      case TT_Colon:  return "Colon";
-      case TT_Equals: return "Equals";
-      case TT_Plus:   return "Plus";
-      case TT_Min:    return "Min";
-      case TT_Mul:    return "Mul";
-      case TT_Div:    return "Div";
+      case TT_Colon:   return "Colon";
+      case TT_Semicol: return "Semicol";
+      case TT_Equals:  return "Equals";
+      case TT_Plus:    return "Plus";
+      case TT_Min:     return "Min";
+      case TT_Mul:     return "Mul";
+      case TT_Div:     return "Div";
+      case TT_NewLine: return "NewLine";
 
       // Literals
       case TT_Identifier: return "Identifier";
@@ -54,6 +57,7 @@ const cstr TokenType_to_cstr(TokenType self) {
       case TT_Procedure: return "Procedure";
       case TT_Begin:     return "Begin";
       case TT_End:       return "End";
+      case TT_Return:    return "Return";
    }
 
    return "Unknown";
@@ -61,21 +65,11 @@ const cstr TokenType_to_cstr(TokenType self) {
 
 void Token_free(Token self) {
    switch (self.type) {
-      case TT_Eof:        break;
-      case TT_Colon:      break;
-      case TT_Equals:     break;
-      case TT_Plus:       break;
-      case TT_Min:        break;
-      case TT_Mul:        break;
-      case TT_Div:        break;
-      case TT_IntLiteral: break;
-      case TT_Procedure:  break;
-      case TT_Begin:      break;
-      case TT_End:        break;
-   
       case TT_Identifier: {
          String_free(&self.str_literal);
       } break;
+
+      default: break;
    }
 }
 
@@ -188,10 +182,12 @@ Token Lexer_next(Lexer* self) {
             token.y = self->y;
 
             switch (self->current) {
-               case ':': token.type = TT_Colon;  return token;
-               case '=': token.type = TT_Equals; return token;
-               case '+': token.type = TT_Plus;   return token;
-               case '*': token.type = TT_Mul;    return token;
+               case ':':  token.type = TT_Colon;   return token;
+               case ';':  token.type = TT_Semicol; return token;
+               case '=':  token.type = TT_Equals;  return token;
+               case '+':  token.type = TT_Plus;    return token;
+               case '*':  token.type = TT_Mul;     return token;
+               case '\n': token.type = TT_NewLine; return token;
 
                case '-': {
                   if (self->peek >= '0' && self->peek <= '9') {
@@ -213,7 +209,6 @@ Token Lexer_next(Lexer* self) {
                } break;
 
                case ' ':  break;
-               case '\n': break;
 
                default: {
                   if (self->current >= '0' && self->current <= '9') {

@@ -22,6 +22,7 @@ typedef enum {
    ANT_Procedure,
 
    ANT_VariableDecl,
+   ANT_ReturnStmt,
 
    ANT_BinOp,
    ANT_IntLiteral,
@@ -52,6 +53,10 @@ typedef struct {
          String type;
          ANI expression;
       } variable_decl;
+
+      struct {
+         ANI expression;
+      } return_stmt;
 
       struct {
          Operator operator;
