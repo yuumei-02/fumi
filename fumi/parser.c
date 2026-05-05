@@ -169,7 +169,7 @@ retry:
       case TT_NewLine: goto retry;
 
       default: {
-         report_unexpected_token(lexer->path, token);
+         if (!state->panic_mode) report_unexpected_token(lexer->path, token);
          enter_panic();
          Token_free(token);
          return -1;
@@ -350,20 +350,35 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
 
       switch (token.type) {
          case TT_Identifier: {
-            Token peek = Lexer_next(lexer);
-            if (peek.type != TT_Colon) {
-               if (!state->panic_mode) {
-                  enter_panic();
-                  report_unexpected_token_expected(lexer->path, peek, TT_Colon);
-               }
-               Lexer_undo(lexer, peek);
-               Token_free(token);
-               break;
-            }
+            Token peek = Lexer_peek(lexer);
 
-            exit_panic();
-            ANI variable_decl = parse_variable_decl(token.str_literal, lexer, ast, state);
-            if (variable_decl >= 0) Vector_push(&self, &variable_decl);
+            switch (peek.type) {
+               case TT_Colon: {
+                  exit_panic();
+                  Lexer_next(lexer);
+                  ANI variable_decl = parse_variable_decl(token.str_literal, lexer, ast, state);
+                  if (variable_decl >= 0) Vector_push(&self, &variable_decl);
+               } break;
+
+               // @todo: validate correctness
+               default: {
+                  Lexer_undo(lexer, token);
+                  ANI expression = parse_expression(lexer, ast, state);
+                  if (expression >= 0) {
+                     Vector_push(&self, &expression);
+                     break;
+                  }
+
+                  Lexer_next(lexer);
+                  if (!state->panic_mode) {
+                     report_unexpected_token(lexer->path, peek);
+                     enter_panic();
+                  }
+                  
+                  Token_free(token);
+                  break;
+               }
+            }
          } break;
 
          case TT_Return: {
@@ -412,6 +427,14 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
          case TT_NewLine: break;
 
          default: {
+            Lexer_undo(lexer, token);
+            ANI expression = parse_expression(lexer, ast, state);
+            if (expression >= 0) {
+               Vector_push(&self, &expression);
+               break;
+            }
+
+            Lexer_next(lexer);
             Token_free(token);
             if (state->panic_mode) break;
             enter_panic();

@@ -4,12 +4,11 @@ procedure constants begin
    version : string = "0.0.1"
 end
 
-// @todo: allow for standalone expressions inside code blocks
 procedure main begin
    result : i32 = 50
    
    while true do
-      new-result := result -= 1
+      result -= 1
 
       if result <= 0 then
          break
