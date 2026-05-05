@@ -2,7 +2,7 @@
 Fumi is a programming language made for recreational and learning purposes.
 
 # Building the project
-This project depends on Mektova-C-Utils,          : https://github.com/yuumei-02/Mektova-C-Utils <br>
+This project depends on Mektova-C-Utils           : https://github.com/yuumei-02/Mektova-C-Utils <br>
 And Vlodinnye-make (already included in the repo) : https://github.com/yuumei-02/Vlodinnye-make <br>
 Mektova-C-Utils needs to be installed system-wide. <br>
 <br>

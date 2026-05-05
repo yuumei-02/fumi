@@ -4,7 +4,11 @@ procedure check-version begin
    version : string = "0.0.1"
 end
 
-procedure add begin
+procedure add with
+   a : i32,
+   b : i32,
+   returns i32
+begin
    return a + b
 end
 

@@ -32,6 +32,7 @@ typedef enum {
 
    // Keywords
    TT_Procedure, TT_Return,
+   TT_With,      TT_Returns,
    TT_Begin,     TT_End,
    TT_If,        TT_Then,
    TT_While,     TT_Do,

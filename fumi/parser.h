@@ -27,6 +27,7 @@ typedef enum {
 typedef enum {
    ANT_Module,
    ANT_Procedure,
+   ANT_Parameter,
 
    ANT_VariableDecl,
    ANT_ReturnStmt,
@@ -58,8 +59,14 @@ typedef struct {
       struct {
          String name;
          String return_type;
+         Vector ANI_parameters;
          Vector ANI_body;
       } procedure;
+
+      struct {
+         String name;
+         String type;
+      } parameter;
 
       struct {
          String name;

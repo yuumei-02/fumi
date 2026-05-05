@@ -28,6 +28,8 @@ void Lexer_define_keyword_hashmap() {
 
    def_keyword("procedure", TT_Procedure);
    def_keyword("return",    TT_Return);
+   def_keyword("with",      TT_With);
+   def_keyword("returns",   TT_Returns);
    def_keyword("begin",     TT_Begin);
    def_keyword("end",       TT_End);
    def_keyword("if",        TT_If);
@@ -80,6 +82,8 @@ const cstr TokenType_to_cstr(TokenType self) {
       // Keywords
       case TT_Procedure: return "Procedure";
       case TT_Return:    return "Return";
+      case TT_With:      return "With";
+      case TT_Returns:   return "Returns";
       case TT_Begin:     return "Begin";
       case TT_End:       return "End";
       case TT_If:        return "If";

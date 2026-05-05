@@ -521,12 +521,29 @@ ANI parse_procedure(Lexer* lexer, Ast* ast, ParseState* state) {
       .type = ANT_Procedure,
       .procedure = {
          .name = String_dummy(),
-         .return_type = String_from("void")
+         .return_type = String_dummy(),
+         .ANI_parameters = Vector_new(sizeof(ANI))
       }
    };
 
-   TokenType expected[2] = { TT_Identifier };
+   TokenType expected[3] = { TT_Identifier };
    u32 expected_len = 1;
+
+   typedef enum {
+      IA_ProcName,
+      IA_ParName,
+      IA_ParType,
+      IA_RetType
+   } IdentifierAs;
+
+   IdentifierAs identifier_as = IA_ProcName;
+
+   AstNode parameter = {
+      .type = ANT_Parameter,
+      .parameter = {
+         .name = String_dummy(),
+      }
+   };
 
    loop {
       Token token = Lexer_next(lexer);
@@ -552,11 +569,72 @@ ANI parse_procedure(Lexer* lexer, Ast* ast, ParseState* state) {
 
       switch (token.type) {
          case TT_Identifier: {
-            expected[0] = TT_Begin;
-            self.procedure.name = token.str_literal;
+            switch (identifier_as) {
+               case IA_ProcName: {
+                  expected[0] = TT_Begin;
+                  expected[1] = TT_With;
+                  expected_len = 2;
+                  self.procedure.name = token.str_literal;
+               } break;
+
+               case IA_ParName: {
+                  parameter.parameter.name = token.str_literal;
+                  expected[0] = TT_Colon;
+                  expected_len = 1;
+               } break;
+
+               case IA_ParType: {
+                  parameter.parameter.type = token.str_literal;
+
+                  ANI ani_parameter = (ANI) ast->AstNodes.length;
+                  Vector_push(&ast->AstNodes, &parameter);
+                  Vector_push(&self.procedure.ANI_parameters, &ani_parameter);
+
+                  parameter.parameter.name = String_dummy();
+                  parameter.parameter.type = String_dummy();
+
+                  expected[0] = TT_Comma;
+                  expected[1] = TT_Returns;
+                  expected[2] = TT_Begin;
+                  expected_len = 3;
+               } break;
+
+               case IA_RetType: {
+                  self.procedure.return_type = token.str_literal;
+                  expected[0] = TT_Begin;
+                  expected_len = 1;
+               } break;
+
+               default: {
+                  panic("unreachable");
+               }
+            }
+         } break;
+
+         case TT_Comma: [[fallthrough]];
+         case TT_With: {
+            identifier_as = IA_ParName;
+            expected[0] = TT_Identifier;
+            expected[1] = TT_Returns;
+            expected[2] = TT_Begin;
+            expected_len = 3;
+         } break;
+
+         case TT_Colon: {
+            identifier_as = IA_ParType;
+            expected[0] = TT_Identifier;
+            expected_len = 1;
+         } break;
+
+         case TT_Returns: {
+            identifier_as = IA_RetType;
+            expected[0] = TT_Identifier;
+            expected_len = 1;
          } break;
 
          case TT_Begin: {
+            if (self.procedure.return_type.length <= 0)
+               self.procedure.return_type = String_from("void");
             self.procedure.ANI_body = parse_code_block(lexer, ast, state);
             goto finish_parsing;
          } break;
@@ -572,11 +650,10 @@ finish_parsing:
    return (ANI) (ast->AstNodes.length - 1);
    
 failure:
-   if (self.procedure.name.length > 0)
-      String_free(&self.procedure.name);
-      
-   if (self.procedure.return_type.length > 0)
-      String_free(&self.procedure.return_type);
+   if (self.procedure.name.length > 0)        String_free(&self.procedure.name);
+   if (self.procedure.return_type.length > 0) String_free(&self.procedure.return_type);
+   if (parameter.parameter.name.length > 0)   String_free(&parameter.parameter.name);
+   Vector_free(&self.procedure.ANI_parameters);
    return -1;
 }
    
@@ -662,6 +739,11 @@ void Ast_free(Ast* self) {
             Vector_free(&node->procedure.ANI_body);
          } continue;
 
+         case ANT_Parameter: {
+            String_free(&node->parameter.name);
+            String_free(&node->parameter.type);
+         } continue;
+
          case ANT_VariableDecl: {
             String_free(&node->variable_decl.name);
             String_free(&node->variable_decl.type);
@@ -736,6 +818,17 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
          indprintln("Procedure");
          indprintln("├─name: %s", self->procedure.name.chars);
          indprintln("├─return-type: %s", self->procedure.return_type.chars);
+         if (self->procedure.ANI_parameters.length <= 0) {
+            indprintln("├─parameters: empty");
+         } else {
+            indprintln("├─parameters:");
+         }
+
+         foreach (self->procedure.ANI_parameters, i) {
+            ANI* node_i = Vector_get(&self->procedure.ANI_parameters, i);
+            AstNode* node = Vector_get(&ast->AstNodes, *node_i);
+            AstNode_print(node, ast, indent + 1);
+         }
 
          if (self->procedure.ANI_body.length <= 0) {
             indprintln("└─body: empty");
@@ -748,6 +841,12 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
             AstNode* node = Vector_get(&ast->AstNodes, *node_i);
             AstNode_print(node, ast, indent + 1);
          }
+      } return;
+
+      case ANT_Parameter: {
+         indprintln("Parameter");
+         indprintln("├─name: %s", self->parameter.name.chars);
+         indprintln("└─type: %s", self->parameter.type.chars);
       } return;
       
       case ANT_VariableDecl: {
