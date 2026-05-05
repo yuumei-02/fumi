@@ -38,7 +38,8 @@ typedef enum {
    ANT_BinOp,
    ANT_IntLiteral,
    ANT_StringLiteral,
-   ANT_Variable
+   ANT_Variable,
+   ANT_FunctionCall
 } AstNodeType;
 
 /// AstNodeIndex
@@ -86,6 +87,11 @@ typedef struct {
          ANI left;
          ANI right;
       } bin_op;
+
+      struct {
+         String function;
+         Vector ANI_arguments;
+      } function_call;
 
       i64 int_literal;
       String str_literal;

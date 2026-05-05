@@ -134,6 +134,14 @@ OperatorAssociation Operator_get_association(Operator self) {
 
 ANI parse_expression_impl(Lexer* lexer, Ast* ast, ParseState* state, isize precendence);
 
+ANI parse_expression(Lexer* lexer, Ast* ast, ParseState* state) {
+   Token peek = Lexer_next(lexer);
+   if (peek.type == TT_NewLine) return -1;
+   Lexer_undo(lexer, peek);
+   
+   return parse_expression_impl(lexer, ast, state, -1);
+}
+
 ANI parse_atom(Lexer* lexer, Ast* ast, ParseState* state) {
 retry:
    Token token = Lexer_next(lexer);
@@ -158,31 +166,93 @@ retry:
       }
 
       case TT_Identifier: {
-         Vector_push_create(&ast->AstNodes, ((AstNode) {
-            .type = ANT_Variable,
-            .variable = token.str_literal
-         }));
+         Token next = Lexer_next(lexer);
 
-         return (ANI) (ast->AstNodes.length - 1);
+         switch (next.type) {
+            case TT_LParen: {
+               AstNode function_call = {
+                  .type = ANT_FunctionCall,
+                  .function_call = {
+                     .function = token.str_literal,
+                     .ANI_arguments = Vector_new(sizeof(ANI))
+                  }
+               };
+
+               // @todo: validate
+               bool expecting_comma = false;
+               loop {
+                  next = Lexer_next(lexer);
+                  switch (next.type) {
+                     case TT_RParen: {
+                        exit_panic();
+                        Vector_push(&ast->AstNodes, &function_call);
+                        return (ANI) (ast->AstNodes.length - 1);
+                     } break;
+
+                     case TT_Comma: {
+                        if (expecting_comma) {
+                           exit_panic();
+                           expecting_comma = false;
+                           break;
+                        }
+
+                        if (!state->panic_mode) {
+                           enter_panic();
+                           report_unexpected_token(lexer->path, next);
+                        }
+                     } break;
+
+                     default: {
+                        if (expecting_comma) goto skip_expression;
+                     
+                        Lexer_undo(lexer, next);
+                        ANI arg = parse_expression(lexer, ast, state);
+                        if (arg >= 0) {
+                           exit_panic();
+                           expecting_comma = true;
+                           Vector_push(&function_call.function_call.ANI_arguments, &arg);
+                           break;
+                        }
+                        next = Lexer_next(lexer);
+
+                     skip_expression:
+                        Token_free(next);
+                        if (!state->panic_mode) {
+                           report_unexpected_token(lexer->path, next);
+                           enter_panic();
+                        }
+
+                        if (next.type == TT_Eof) {
+                           return -1;
+                        }
+                     }
+                  }
+               }
+            } break;
+            
+            default: {
+               Vector_push_create(&ast->AstNodes, ((AstNode) {
+                  .type = ANT_Variable,
+                  .variable = token.str_literal
+               }));
+
+               Lexer_undo(lexer, next);
+               return (ANI) (ast->AstNodes.length - 1);
+            }
+         }
       }
 
       case TT_NewLine: goto retry;
 
       default: {
-         if (!state->panic_mode) report_unexpected_token(lexer->path, token);
-         enter_panic();
+         if (!state->panic_mode) {
+            report_unexpected_token(lexer->path, token);
+            enter_panic();
+         }
          Token_free(token);
          return -1;
       }
    }
-}
-
-ANI parse_expression(Lexer* lexer, Ast* ast, ParseState* state) {
-   Token peek = Lexer_next(lexer);
-   if (peek.type == TT_NewLine) return -1;
-   Lexer_undo(lexer, peek);
-   
-   return parse_expression_impl(lexer, ast, state, -1);
 }
 
 // @reference: https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
@@ -613,6 +683,11 @@ void Ast_free(Ast* self) {
             String_free(&node->str_literal);
          } continue;
 
+         case ANT_FunctionCall: {
+            String_free(&node->function_call.function);
+            Vector_free(&node->function_call.ANI_arguments);
+         } continue;
+
          case ANT_BreakStmt:    continue;
          case ANT_ContinueStmt: continue;
          case ANT_ReturnStmt:   continue;
@@ -775,6 +850,23 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       case ANT_Variable: {
          indprintln("Variable");
          indprintln("└─name: %s", self->variable.chars);
+      } return;
+
+      case ANT_FunctionCall: {
+         indprintln("FunctionCall");
+         indprintln("├─function: %s", self->function_call.function.chars);
+
+         if (self->function_call.ANI_arguments.length <= 0) {
+            indprintln("└─arguments: empty");
+         } else {
+            indprintln("└─arguments:");
+         }
+
+         foreach (self->function_call.ANI_arguments, i) {
+            ANI* node_i = Vector_get(&self->function_call.ANI_arguments, i);
+            AstNode* argument = Vector_get(&ast->AstNodes, *node_i);
+            AstNode_print(argument, ast, indent + 1);
+         }
       } return;
    }
 

@@ -1,12 +1,16 @@
 // Ignore me
 
-procedure constants begin
+procedure check-version begin
    version : string = "0.0.1"
+end
+
+procedure add begin
+   return a + b
 end
 
 procedure main begin
    result : i32 = 50
-   
+
    while true do
       result -= 1
 
@@ -16,5 +20,7 @@ procedure main begin
    end
 
    return result
+
+   add(5, 10)
 end
 

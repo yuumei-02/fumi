@@ -48,6 +48,7 @@ const cstr TokenType_to_cstr(TokenType self) {
       // Single char
       case TT_Colon:   return "Colon";
       case TT_Semicol: return "Semicol";
+      case TT_Comma:   return "Comma";
       case TT_Equals:  return "Equals";
       case TT_Plus:    return "Plus";
       case TT_Min:     return "Min";
@@ -56,6 +57,8 @@ const cstr TokenType_to_cstr(TokenType self) {
       case TT_NewLine: return "NewLine";
       case TT_Less:    return "Less";
       case TT_Great:   return "Great";
+      case TT_LParen:  return "LParen";
+      case TT_RParen:  return "RParen";
 
       // Double char
       case TT_DoubleEquals: return "DoubleEquals";
@@ -223,7 +226,10 @@ Token Lexer_next(Lexer* self) {
             switch (self->current) {
                case ':':  return_single(TT_Colon);
                case ';':  return_single(TT_Semicol);
+               case ',':  return_single(TT_Comma);
                case '\n': return_single(TT_NewLine);
+               case '(':  return_single(TT_LParen);
+               case ')':  return_single(TT_RParen);
 
                case '+': {
                   switch (self->peek) {

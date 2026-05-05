@@ -11,10 +11,12 @@ typedef enum {
 
    // Single char
    TT_Colon,  TT_Semicol,
+   TT_Comma,
    TT_Equals, TT_NewLine,
    TT_Plus,   TT_Min,
    TT_Mul,    TT_Div,
    TT_Less,   TT_Great,
+   TT_LParen, TT_RParen,
 
    // Double char
    TT_DoubleEquals, TT_NotEquals,
