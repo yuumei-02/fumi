@@ -27,11 +27,15 @@ void Lexer_define_keyword_hashmap() {
       HashMap_put(TokenType)(&keywords, keyword, type);
 
    def_keyword("procedure", TT_Procedure);
-   def_keyword("begin", TT_Begin);
-   def_keyword("end", TT_End);
-   def_keyword("return", TT_Return);
-   def_keyword("if", TT_If);
-   def_keyword("then", TT_Then);
+   def_keyword("return",    TT_Return);
+   def_keyword("begin",     TT_Begin);
+   def_keyword("end",       TT_End);
+   def_keyword("if",        TT_If);
+   def_keyword("then",      TT_Then);
+   def_keyword("while",     TT_While);
+   def_keyword("do",        TT_Do);
+   def_keyword("break",     TT_Break);
+   def_keyword("continue",  TT_Continue);
 
    #undef def_keyword
 }
@@ -71,11 +75,15 @@ const cstr TokenType_to_cstr(TokenType self) {
 
       // Keywords
       case TT_Procedure: return "Procedure";
+      case TT_Return:    return "Return";
       case TT_Begin:     return "Begin";
       case TT_End:       return "End";
-      case TT_Return:    return "Return";
       case TT_If:        return "If";
       case TT_Then:      return "Then";
+      case TT_While:     return "While";
+      case TT_Do:        return "Do";
+      case TT_Break:     return "Break";
+      case TT_Continue:  return "Continue";
    }
 
    return "Unknown";

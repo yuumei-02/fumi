@@ -4,6 +4,7 @@
 #include <mcu/io.h>
 
 // @note: don't forget to update Token_free when adding new token types
+// @todo: bad token
 typedef enum {
    // Miscellaneous
    TT_Eof,
@@ -27,10 +28,11 @@ typedef enum {
    TT_IntLiteral,
 
    // Keywords
-   TT_Procedure,
-   TT_Begin, TT_End,
-   TT_Return,
-   TT_If, TT_Then
+   TT_Procedure, TT_Return,
+   TT_Begin,     TT_End,
+   TT_If,        TT_Then,
+   TT_While,     TT_Do,
+   TT_Break,     TT_Continue,
 } TokenType;
 
 typedef struct {

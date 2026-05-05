@@ -31,6 +31,9 @@ typedef enum {
    ANT_VariableDecl,
    ANT_ReturnStmt,
    ANT_IfStmt,
+   ANT_WhileStmt,
+   ANT_BreakStmt,
+   ANT_ContinueStmt,
 
    ANT_BinOp,
    ANT_IntLiteral,
@@ -67,6 +70,11 @@ typedef struct {
          /* ANI next_branch; */
          Vector ANI_body;
       } if_stmt;
+
+      struct {
+         ANI expression;
+         Vector ANI_body;
+      } while_stmt;
 
       struct {
          ANI expression;

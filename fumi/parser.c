@@ -308,6 +308,30 @@ ANI parse_if_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
    return (ANI) (ast->AstNodes.length - 1);
 }
 
+ANI parse_while_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
+   AstNode self = {
+      .type = ANT_WhileStmt
+   };
+
+   self.while_stmt.expression = parse_expression(lexer, ast, state);
+   if (self.while_stmt.expression < 0) {
+      enter_panic();
+      return -1;
+   }
+
+   Token next = Lexer_next(lexer);
+   if (next.type != TT_Do) {
+      enter_panic();
+      report_unexpected_token_expected(lexer->path, next, TT_Do);
+      return -1;
+   }
+
+   self.while_stmt.ANI_body = parse_code_block(lexer, ast, state);
+   
+   Vector_push(&ast->AstNodes, &self);
+   return (ANI) (ast->AstNodes.length - 1);
+}
+
 /// Returns a [Vector<ANI>]
 Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
    Vector self = Vector_new(sizeof(ANI));
@@ -330,8 +354,7 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
 
             exit_panic();
             ANI variable_decl = parse_variable_decl(token.str_literal, lexer, ast, state);
-            if (variable_decl < 0) break;
-            Vector_push(&self, &variable_decl);
+            if (variable_decl >= 0) Vector_push(&self, &variable_decl);
          } break;
 
          case TT_Return: {
@@ -343,8 +366,27 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
          case TT_If: {
             exit_panic();
             ANI if_stmt = parse_if_stmt(lexer, ast, state);
-            if (if_stmt < 0) break;
-            Vector_push(&self, &if_stmt);
+            if (if_stmt >= 0) Vector_push(&self, &if_stmt);
+         } break;
+
+         case TT_While: {
+            exit_panic();
+            ANI while_stmt = parse_while_stmt(lexer, ast, state);
+            if (while_stmt >= 0) Vector_push(&self, &while_stmt);
+         } break;
+
+         case TT_Break: {
+            AstNode break_stmt = { .type = ANT_BreakStmt };
+            Vector_push(&ast->AstNodes, &break_stmt);
+            ANI ani_break_stmt = (ANI) (ast->AstNodes.length - 1);
+            Vector_push(&self, &ani_break_stmt);
+         } break;
+
+         case TT_Continue: {
+            AstNode continue_stmt = { .type = ANT_ContinueStmt };
+            Vector_push(&ast->AstNodes, &continue_stmt);
+            ANI ani_continue_stmt = (ANI) (ast->AstNodes.length - 1);
+            Vector_push(&self, &ani_continue_stmt);
          } break;
       
          case TT_End: {
@@ -531,9 +573,15 @@ void Ast_free(Ast* self) {
             Vector_free(&node->if_stmt.ANI_body);
          } continue;
 
-         case ANT_ReturnStmt: continue;
-         case ANT_BinOp:      continue;
-         case ANT_IntLiteral: continue;
+         case ANT_WhileStmt: {
+            Vector_free(&node->while_stmt.ANI_body);
+         } continue;
+
+         case ANT_BreakStmt:    continue;
+         case ANT_ContinueStmt: continue;
+         case ANT_ReturnStmt:   continue;
+         case ANT_BinOp:        continue;
+         case ANT_IntLiteral:   continue;
          case ANT_Module: {
             panic("unreachable");
          }
@@ -625,6 +673,36 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
             AstNode* node = Vector_get(&ast->AstNodes, *node_i);
             AstNode_print(node, ast, indent + 1);
          }
+      } return;
+
+      case ANT_WhileStmt: {
+         indprintln("WhileStmt");
+         indprintln("├─expression:");
+         
+         mcu_assert(self->while_stmt.expression != -1,
+            "While statements must always have an expression");
+         AstNode* node = Vector_get(&ast->AstNodes, self->while_stmt.expression);
+         AstNode_print(node, ast, indent + 1);
+         
+         if (self->while_stmt.ANI_body.length <= 0) {
+            indprintln("└─body: empty");
+         } else {
+            indprintln("└─body:");
+         }
+
+         foreach (self->while_stmt.ANI_body, i) {
+            ANI* node_i = Vector_get(&self->while_stmt.ANI_body, i);
+            AstNode* node = Vector_get(&ast->AstNodes, *node_i);
+            AstNode_print(node, ast, indent + 1);
+         }
+      } return;
+
+      case ANT_BreakStmt: {
+         indprintln("BreakStmt");
+      } return;
+
+      case ANT_ContinueStmt: {
+         indprintln("ContinueStmt");
       } return;
 
       case ANT_ReturnStmt: {
