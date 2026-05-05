@@ -26,6 +26,7 @@ typedef enum {
    // Literals
    TT_Identifier,
    TT_IntLiteral,
+   TT_StringLiteral,
 
    // Keywords
    TT_Procedure, TT_Return,
@@ -52,6 +53,7 @@ typedef enum {
    LM_Normal,
    LM_Comment,
    LM_Integer,
+   LM_String,
 } LexerMode;
 
 typedef struct {

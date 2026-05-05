@@ -148,6 +148,15 @@ retry:
          return (ANI) (ast->AstNodes.length - 1);
       }
 
+      case TT_StringLiteral: {
+         Vector_push_create(&ast->AstNodes, ((AstNode) {
+            .type = ANT_StringLiteral,
+            .str_literal = token.str_literal
+         }));
+
+         return (ANI) (ast->AstNodes.length - 1);      
+      }
+
       case TT_Identifier: {
          Vector_push_create(&ast->AstNodes, ((AstNode) {
             .type = ANT_Variable,
@@ -577,6 +586,10 @@ void Ast_free(Ast* self) {
             Vector_free(&node->while_stmt.ANI_body);
          } continue;
 
+         case ANT_StringLiteral: {
+            String_free(&node->str_literal);
+         } continue;
+
          case ANT_BreakStmt:    continue;
          case ANT_ContinueStmt: continue;
          case ANT_ReturnStmt:   continue;
@@ -730,6 +743,10 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       
       case ANT_IntLiteral: {
          indprintln("%ld", self->int_literal);
+      } return;
+
+      case ANT_StringLiteral: {
+         indprintln("\"%s\"", self->str_literal.chars);
       } return;
 
       case ANT_Variable: {

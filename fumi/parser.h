@@ -37,6 +37,7 @@ typedef enum {
 
    ANT_BinOp,
    ANT_IntLiteral,
+   ANT_StringLiteral,
    ANT_Variable
 } AstNodeType;
 
@@ -87,6 +88,7 @@ typedef struct {
       } bin_op;
 
       i64 int_literal;
+      String str_literal;
       String variable;
    };
 } AstNode;

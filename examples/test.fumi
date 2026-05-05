@@ -1,6 +1,7 @@
 // Ignore me
 
-procedure empty begin
+procedure constants begin
+   version : string = "0.0.1"
 end
 
 // @todo: allow for standalone expressions inside code blocks

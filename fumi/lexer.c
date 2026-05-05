@@ -70,8 +70,9 @@ const cstr TokenType_to_cstr(TokenType self) {
       case TT_DivEquals:    return "DivEquals";
 
       // Literals
-      case TT_Identifier: return "Identifier";
-      case TT_IntLiteral: return "IntLiteral";
+      case TT_Identifier:    return "Identifier";
+      case TT_IntLiteral:    return "IntLiteral";
+      case TT_StringLiteral: return "StringLiteral";
 
       // Keywords
       case TT_Procedure: return "Procedure";
@@ -91,6 +92,7 @@ const cstr TokenType_to_cstr(TokenType self) {
 
 void Token_free(Token self) {
    switch (self.type) {
+      case TT_StringLiteral: [[fallthrough]];
       case TT_Identifier: {
          String_free(&self.str_literal);
       } break;
@@ -103,8 +105,9 @@ void Token_print(const cstr path, Token self) {
    printf("%s:%zu:%zu:%zu: %s", path, self.y, self.x, self.length, TokenType_to_cstr(self.type));
 
    switch (self.type) {
-      case TT_Identifier: println(" (%s)", self.str_literal.chars); break;
-      case TT_IntLiteral: println(" (%ld)", self.int_literal);      break;
+      case TT_StringLiteral: [[fallthrough]];
+      case TT_Identifier:    println(" (%s)", self.str_literal.chars); break;
+      case TT_IntLiteral:    println(" (%ld)", self.int_literal);      break;
 
       default: {
          printf("\n");
@@ -297,6 +300,10 @@ Token Lexer_next(Lexer* self) {
                   }
                } break;
 
+               case '"': {
+                  self->mode = LM_String;
+               } break;
+
                case ' ': break;
 
                default: {
@@ -349,6 +356,27 @@ Token Lexer_next(Lexer* self) {
             }
 
             token.length += 1;
+         } break;
+
+         case LM_String: {
+            switch (self->current) {
+               case '"': {
+               return_string_literal:
+                  token.type = TT_StringLiteral;
+                  token.length = self->accumulated.length;
+                  token.str_literal = String_clone(self->accumulated);
+                  return token;
+               }
+               
+               default: {
+                  String_append(&self->accumulated, self->current);
+               }
+            }
+
+            if (self->peek == EOF) {
+               eprintln("%s:%zu:%zu: Unterminated string literal", self->path, token.y, token.x);
+               goto return_string_literal;
+            }
          } break;
 
          default: {
