@@ -361,30 +361,71 @@ ANI parse_return_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
 }
 
 /// Returns a [Vector<ANI>]
-Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state);
+Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state, TokenType terminator);
 
+// @todo: validate correctness
 ANI parse_if_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
    AstNode self = {
       .type = ANT_IfStmt
    };
 
-   self.if_stmt.expression = parse_expression(lexer, ast, state);
-   if (self.if_stmt.expression < 0) {
-      enter_panic();
-      return -1;
+   Vector AstNode_branches = Vector_new(sizeof(AstNode));
+
+   loop {
+      self.if_stmt.expression = parse_expression(lexer, ast, state);
+      if (self.if_stmt.expression < 0) {
+         goto failure;
+      }
+
+      Token next = Lexer_next(lexer);
+      if (next.type != TT_Then) {
+         report_unexpected_token_expected(lexer->path, next, TT_Then);
+         goto failure;
+      }
+
+      self.if_stmt.ANI_body = parse_code_block(lexer, ast, state, TT_Else);
+      Vector_push(&AstNode_branches, &self);
+
+      // @todo: else statement by fetching the previous token
+      next = Lexer_next(lexer);
+      switch (next.type) {
+         case TT_If: {
+            eprintln("Branchy branchy :3");
+         } break;
+      
+         default: {
+            Lexer_undo(lexer, next);
+            goto return_if_stmt;
+         }
+      }
    }
 
-   Token next = Lexer_next(lexer);
-   if (next.type != TT_Then) {
-      enter_panic();
-      report_unexpected_token_expected(lexer->path, next, TT_Then);
-      return -1;
-   }
-
-   self.if_stmt.ANI_body = parse_code_block(lexer, ast, state);
+return_if_stmt:
+   ANI first_branch = (ANI) ast->AstNodes.length;
    
-   Vector_push(&ast->AstNodes, &self);
-   return (ANI) (ast->AstNodes.length - 1);
+   foreach (AstNode_branches, i) {
+      AstNode* node = Vector_get(&AstNode_branches, i);
+      if (i != AstNode_branches.length - 1) {
+         node->if_stmt.next_branch = first_branch + 1;
+      } else {
+         node->if_stmt.next_branch = -1;
+      }
+
+      Vector_push(&ast->AstNodes, node);
+   }
+
+   Vector_free(&AstNode_branches);
+   return first_branch;
+
+failure:
+   foreach (AstNode_branches, i) {
+      AstNode* node = Vector_get(&AstNode_branches, i);
+      Vector_free(&node->if_stmt.ANI_body);
+   }
+
+   Vector_free(&AstNode_branches);
+   enter_panic();
+   return -1;
 }
 
 ANI parse_while_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
@@ -405,18 +446,22 @@ ANI parse_while_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
       return -1;
    }
 
-   self.while_stmt.ANI_body = parse_code_block(lexer, ast, state);
+   self.while_stmt.ANI_body = parse_code_block(lexer, ast, state, TT_End);
    
    Vector_push(&ast->AstNodes, &self);
    return (ANI) (ast->AstNodes.length - 1);
 }
 
 /// Returns a [Vector<ANI>]
-Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
+Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state, TokenType terminator) {
    Vector self = Vector_new(sizeof(ANI));
 
    loop {
       Token token = Lexer_next(lexer);
+      if (token.type == terminator) {
+         exit_panic();
+         return self;
+      }
 
       switch (token.type) {
          case TT_Identifier: {
@@ -482,11 +527,11 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state) {
             ANI ani_continue_stmt = (ANI) (ast->AstNodes.length - 1);
             Vector_push(&self, &ani_continue_stmt);
          } break;
-      
+
          case TT_End: {
             exit_panic();
             return self;
-         }
+         } break;
 
          case TT_Eof: {
             enter_panic();
@@ -635,7 +680,7 @@ ANI parse_procedure(Lexer* lexer, Ast* ast, ParseState* state) {
          case TT_Begin: {
             if (self.procedure.return_type.length <= 0)
                self.procedure.return_type = String_from("void");
-            self.procedure.ANI_body = parse_code_block(lexer, ast, state);
+            self.procedure.ANI_body = parse_code_block(lexer, ast, state, TT_End);
             goto finish_parsing;
          } break;
       
@@ -873,9 +918,9 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
          AstNode_print(node, ast, indent + 1);
          
          if (self->if_stmt.ANI_body.length <= 0) {
-            indprintln("└─body: empty");
+            indprintln("├─body: empty");
          } else {
-            indprintln("└─body:");
+            indprintln("├─body:");
          }
 
          foreach (self->if_stmt.ANI_body, i) {
@@ -883,6 +928,15 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
             AstNode* node = Vector_get(&ast->AstNodes, *node_i);
             AstNode_print(node, ast, indent + 1);
          }
+
+         if (self->if_stmt.next_branch < 0) {
+            indprintln("└─next_branch: empty");
+         } else {
+            indprintln("└─next_branch:");
+         }
+
+         node = Vector_get(&ast->AstNodes, self->if_stmt.next_branch);
+         AstNode_print(node, ast, indent + 1);
       } return;
 
       case ANT_WhileStmt: {

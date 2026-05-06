@@ -35,6 +35,7 @@ typedef enum {
    TT_With,      TT_Returns,
    TT_Begin,     TT_End,
    TT_If,        TT_Then,
+   TT_Else,
    TT_While,     TT_Do,
    TT_Break,     TT_Continue,
 } TokenType;

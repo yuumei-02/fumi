@@ -76,7 +76,7 @@ typedef struct {
 
       struct {
          ANI expression;
-         /* ANI next_branch; */
+         ANI next_branch;
          Vector ANI_body;
       } if_stmt;
 
