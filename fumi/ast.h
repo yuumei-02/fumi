@@ -3,8 +3,9 @@
 #include <mcu/core.h>
 #include <mcu/containers.h>
 
+#include "lexer.h"
+
 typedef enum {
-   SK_Module,
    SK_Proc,
    SK_Type,
    SK_Const
@@ -126,4 +127,14 @@ typedef struct {
    Vector AstNode_modules;
    Vector AstNodes;
 } Ast;
+
+const cstr SymbolKind_to_cstr(SymbolKind self);
+
+Operator TokenType_to_operator(TokenType type, nullable bool* is_operator);
+const cstr Operator_to_cstr(Operator operator);
+isize Operator_get_precedence(Operator operator);
+OperatorAssociation Operator_get_association(Operator self);
+
+void Ast_free(Ast* self);
+void Ast_print(Ast self);
 
