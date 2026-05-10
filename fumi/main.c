@@ -7,6 +7,7 @@
 #include "flags.h"
 #include "lexer.h"
 #include "parser.h"
+#include "typing.h"
 
 i32 token_dump(const cstr file_path) {
    Lexer lexer = Lexer_new(file_path);
@@ -34,13 +35,19 @@ i32 compile(const cstr file_path, CompileFlags flags) {
    time_t end = clock();
    double front_end_time = (double) (end - start) / CLOCKS_PER_SEC;
 
+   start = clock();
+   Ast_create_symbol_tables(&ast);
+   end = clock();
+   double middle_end_time = (double) (end - start) / CLOCKS_PER_SEC;
+
    if (flags.ast_dump) {
       Ast_print(ast);
    }
 
    println("Compilation statistics");
    println("Target: x86-64 Linux");
-   println("frontend: %.6lfs", front_end_time);
+   println("frontend   : %.6lfs", front_end_time);
+   println("middle-end : %.6lfs", middle_end_time);
    println("[i] Compilation successfull");
    Ast_free(&ast);
    return 0;
