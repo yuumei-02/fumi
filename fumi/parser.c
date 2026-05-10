@@ -389,9 +389,7 @@ ANI parse_if_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
       // @todo: else statement by fetching the previous token
       next = Lexer_next(lexer);
       switch (next.type) {
-         case TT_If: {
-            eprintln("Branchy branchy :3");
-         } break;
+         case TT_If: break;
       
          default: {
             Lexer_undo(lexer, next);
@@ -406,7 +404,7 @@ return_if_stmt:
    foreach (AstNode_branches, i) {
       AstNode* node = Vector_get(&AstNode_branches, i);
       if (i != AstNode_branches.length - 1) {
-         node->if_stmt.next_branch = first_branch + 1;
+         node->if_stmt.next_branch = first_branch + i + 1;
       } else {
          node->if_stmt.next_branch = -1;
       }

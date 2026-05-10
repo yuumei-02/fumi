@@ -22,6 +22,8 @@ procedure main begin
          break
       else if true then
          continue
+      else if false then
+         continue
       end
    end
 
