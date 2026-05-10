@@ -361,7 +361,7 @@ ANI parse_return_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
 }
 
 /// Returns a [Vector<ANI>]
-Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state, TokenType terminator);
+Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state, TokenType terminator, nullable bool* ended_with_terminator);
 
 // @todo: validate correctness
 ANI parse_if_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
@@ -383,7 +383,8 @@ ANI parse_if_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
          goto failure;
       }
 
-      self.if_stmt.ANI_body = parse_code_block(lexer, ast, state, TT_Else);
+      bool ended_with_else;
+      self.if_stmt.ANI_body = parse_code_block(lexer, ast, state, TT_Else, &ended_with_else);
       Vector_push(&AstNode_branches, &self);
 
       // @todo: else statement by fetching the previous token
@@ -393,6 +394,12 @@ ANI parse_if_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
       
          default: {
             Lexer_undo(lexer, next);
+            if (ended_with_else) {
+               self.if_stmt.expression = -1;
+               self.if_stmt.ANI_body = parse_code_block(lexer, ast, state, TT_End, nullptr);
+               Vector_push(&AstNode_branches, &self);
+            }
+
             goto return_if_stmt;
          }
       }
@@ -444,19 +451,22 @@ ANI parse_while_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
       return -1;
    }
 
-   self.while_stmt.ANI_body = parse_code_block(lexer, ast, state, TT_End);
+   self.while_stmt.ANI_body = parse_code_block(lexer, ast, state, TT_End, nullptr);
    
    Vector_push(&ast->AstNodes, &self);
    return (ANI) (ast->AstNodes.length - 1);
 }
 
 /// Returns a [Vector<ANI>]
-Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state, TokenType terminator) {
+Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state, TokenType terminator, nullable bool* ended_with_terminator) {
    Vector self = Vector_new(sizeof(ANI));
+
+   if (ended_with_terminator != nullptr) *ended_with_terminator = false;
 
    loop {
       Token token = Lexer_next(lexer);
       if (token.type == terminator) {
+         if (ended_with_terminator != nullptr) *ended_with_terminator = true;
          exit_panic();
          return self;
       }
@@ -678,7 +688,7 @@ ANI parse_procedure(Lexer* lexer, Ast* ast, ParseState* state) {
          case TT_Begin: {
             if (self.procedure.return_type.length <= 0)
                self.procedure.return_type = String_from("void");
-            self.procedure.ANI_body = parse_code_block(lexer, ast, state, TT_End);
+            self.procedure.ANI_body = parse_code_block(lexer, ast, state, TT_End, nullptr);
             goto finish_parsing;
          } break;
       
@@ -909,32 +919,32 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
 
       case ANT_IfStmt: {
          indprintln("IfStmt");
-         indprintln("├─expression:");
-         
-         mcu_assert(self->if_stmt.expression != -1, "If statements must always have an expression");
-         AstNode* node = Vector_get(&ast->AstNodes, self->if_stmt.expression);
-         AstNode_print(node, ast, indent + 1);
+         if (self->if_stmt.expression < 0) {
+            indprintln("├─expression: empty");
+         } else {
+            indprintln("├─expression:");
+            AstNode* node = Vector_get(&ast->AstNodes, self->if_stmt.expression);
+            AstNode_print(node, ast, indent + 1);
+         }
          
          if (self->if_stmt.ANI_body.length <= 0) {
             indprintln("├─body: empty");
          } else {
             indprintln("├─body:");
-         }
-
-         foreach (self->if_stmt.ANI_body, i) {
-            ANI* node_i = Vector_get(&self->if_stmt.ANI_body, i);
-            AstNode* node = Vector_get(&ast->AstNodes, *node_i);
-            AstNode_print(node, ast, indent + 1);
+            foreach (self->if_stmt.ANI_body, i) {
+               ANI* node_i = Vector_get(&self->if_stmt.ANI_body, i);
+               AstNode* node = Vector_get(&ast->AstNodes, *node_i);
+               AstNode_print(node, ast, indent + 1);
+            }
          }
 
          if (self->if_stmt.next_branch < 0) {
             indprintln("└─next_branch: empty");
          } else {
             indprintln("└─next_branch:");
+            AstNode* node = Vector_get(&ast->AstNodes, self->if_stmt.next_branch);
+            AstNode_print(node, ast, indent + 1);
          }
-
-         node = Vector_get(&ast->AstNodes, self->if_stmt.next_branch);
-         AstNode_print(node, ast, indent + 1);
       } return;
 
       case ANT_WhileStmt: {
@@ -950,12 +960,11 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
             indprintln("└─body: empty");
          } else {
             indprintln("└─body:");
-         }
-
-         foreach (self->while_stmt.ANI_body, i) {
-            ANI* node_i = Vector_get(&self->while_stmt.ANI_body, i);
-            AstNode* node = Vector_get(&ast->AstNodes, *node_i);
-            AstNode_print(node, ast, indent + 1);
+            foreach (self->while_stmt.ANI_body, i) {
+               ANI* node_i = Vector_get(&self->while_stmt.ANI_body, i);
+               AstNode* node = Vector_get(&ast->AstNodes, *node_i);
+               AstNode_print(node, ast, indent + 1);
+            }
          }
       } return;
 
@@ -973,8 +982,8 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
             indprintln("└─expression: empty");
             return;
          }
+         
          indprintln("└─expression:");
-
          AstNode* node = Vector_get(&ast->AstNodes, self->return_stmt.expression);
          AstNode_print(node, ast, indent + 1);
       } return;
