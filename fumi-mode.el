@@ -19,7 +19,7 @@
    "Fumi int literals")
 
 (defvar fumi-mode-procedure-calls
-   '("\\<\\([a-zA-Z_][a-zA-Z0-9_]*\\)\\s-*(")
+   '("\\<\\([a-zA-Z_-][a-zA-Z0-9_-]*\\)\\s-*(")
    "Fumi procedure calls")
 
 (defvar fumi-mode-font-lock-keywords

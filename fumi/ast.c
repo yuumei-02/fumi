@@ -385,10 +385,24 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
    panic("unreachable");
 }
 
+void AstNode_print_symbol_table(AstNode* self, Ast* ast, i32 indent) {
+   #define indprintln(format, ...) \
+      for (i32 i = 0; i < indent; ++i) \
+         printf("│  "); \
+      println(format __VA_OPT__(,) __VA_ARGS__)
+
+   mcu_todo("implement");
+}
+
 void Ast_print(Ast self) {
    foreach (self.AstNode_modules, i) {
       AstNode* node = Vector_get(&self.AstNode_modules, i);
       AstNode_print(node, &self, 0);
+   }
+
+   foreach (self.AstNode_modules, i) {
+      AstNode* node = Vector_get(&self.AstNode_modules, i);
+      AstNode_print_symbol_table(node, &self, 0);
    }
 }
 
