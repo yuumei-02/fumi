@@ -8,7 +8,7 @@
 typedef enum {
    SK_Proc,
    SK_Type,
-   SK_Const
+   SK_Var
 } SymbolKind;
 
 typedef struct {

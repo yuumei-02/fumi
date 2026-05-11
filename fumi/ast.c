@@ -6,7 +6,7 @@ const cstr SymbolKind_to_cstr(SymbolKind self) {
    switch (self) {
       case SK_Proc:  return "Proc";
       case SK_Type:  return "Type";
-      case SK_Const: return "Const";
+      case SK_Var:   return "Var";
    }
 
    return "Unknown";
@@ -397,27 +397,41 @@ static void __print_symbol_table(cstr key, Symbol* symbol, void* data) {
    indprintln("├─(symbol: %s, kind: %s)", key, SymbolKind_to_cstr(symbol->kind));
 }
 
-void AstNode_print_symbol_table(AstNode* self, Ast* ast, i32 indent) {
+typedef struct {
+   i32 indent;
+   Ast* ast;
+} AstPrintState;
+
+void AstNode_print_symbol_table(AstNode* self, void* opt) {
+   AstPrintState* state = opt;
+   #undef indprintln
    #define indprintln(format, ...) \
-      for (i32 i = 0; i < indent; ++i) \
+      for (i32 i = 0; i < state->indent; ++i) \
          printf("│  "); \
       println(format __VA_OPT__(,) __VA_ARGS__)
+
+   #define output_symbol_table(scope) \
+      if (scope.length <= 0) { \
+         indprintln("└─symbol table: empty"); \
+      } else { \
+         indprintln("└─symbol table:"); \
+         i32 new_indent = ++state->indent; \
+         HashMap_foreach(Symbol)(&scope, &__print_symbol_table, &new_indent); \
+         indprintln("└─end"); \
+         state->indent--; \
+      }
 
    switch (self->type) {
       case ANT_Module: {
          indprintln("Module : %s", self->module.path.chars);
-         if (self->module.scope.length <= 0) {
-            indprintln("└─symbol table: empty");
-         } else {
-            indprintln("└─symbol table:");
-            i32 new_indent = ++indent;
-            HashMap_foreach(Symbol)(&self->module.scope, &__print_symbol_table, &new_indent);
-            indprintln("└─end");
-            indent--;
-         }
+         output_symbol_table(self->module.scope);
       } return;
       
-      case ANT_Procedure:     return;
+      case ANT_Procedure: {
+         indprintln("Procedure : %s", self->procedure.name.chars);
+         output_symbol_table(self->procedure.scope);
+      } return;
+      
       case ANT_Parameter:     return;
       case ANT_VariableDecl:  return;
       case ANT_ReturnStmt:    return;
@@ -441,10 +455,8 @@ void Ast_print(Ast self) {
       AstNode_print(node, &self, 0);
    }
 
-   foreach (self.AstNode_modules, i) {
-      AstNode* node = Vector_get(&self.AstNode_modules, i);
-      AstNode_print_symbol_table(node, &self, 0);
-   }
+   AstPrintState state = { .indent = 0, .ast = &self };
+   Ast_walk(&self, &AstNode_print_symbol_table, &state);
 }
 
 void AstNode_visit(AstNode* self, Ast* ast, AstWalker walker, nullable void* opt) {
@@ -567,7 +579,7 @@ void Ast_walk(Ast* self, AstWalker walker, nullable void* opt) {
 
    foreach (self->AstNode_modules, i) {
       AstNode* module = Vector_get(&self->AstNode_modules, i);
-      mcu_assert(module->type = ANT_Module,
+      mcu_assert(module->type == ANT_Module,
          "Only module nodes should be present in AstNode_modules");
       AstNode_visit(module, self, walker, opt);
    }
