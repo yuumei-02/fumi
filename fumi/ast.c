@@ -431,12 +431,20 @@ void AstNode_print_symbol_table(AstNode* self, void* opt) {
          indprintln("Procedure : %s", self->procedure.name.chars);
          output_symbol_table(self->procedure.scope);
       } return;
+
+      case ANT_IfStmt: {
+         indprintln("If statement");
+         output_symbol_table(self->if_stmt.scope);
+      } return;
+
+      case ANT_WhileStmt: {
+         indprintln("While stmt");
+         output_symbol_table(self->while_stmt.scope);
+      } return;
       
       case ANT_Parameter:     return;
       case ANT_VariableDecl:  return;
       case ANT_ReturnStmt:    return;
-      case ANT_IfStmt:        return;
-      case ANT_WhileStmt:     return;
       case ANT_BreakStmt:     return;
       case ANT_ContinueStmt:  return;
       case ANT_BinOp:         return;

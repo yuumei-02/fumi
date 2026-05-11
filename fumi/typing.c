@@ -6,8 +6,10 @@
 
 HashMap_impl(Symbol)
 
+static Vector symbol_stack;
+
 void Ast_symbol_visitor(AstNode* node, nullable void* opt) {
-   static Vector symbol_stack;
+   unused opt;
    if (symbol_stack.capacity <= 0)
       symbol_stack = Vector_new(sizeof(HashMap(Symbol)*));
 
@@ -78,5 +80,6 @@ void Ast_create_symbol_tables(Ast* self) {
    mcu_assert(self != nullptr, "self can't be null");
 
    Ast_walk(self, &Ast_symbol_visitor, nullptr);
+   Vector_free(&symbol_stack);
 }
 
