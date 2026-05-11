@@ -385,13 +385,54 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
    panic("unreachable");
 }
 
+static void __print_symbol_table(cstr key, Symbol* symbol, void* data) {
+   mcu_assert(data != nullptr, "data can't be null");
+   i32 indent = *(i32*) data;
+
+   #define indprintln(format, ...) \
+      for (i32 i = 0; i < indent; ++i) \
+         printf("│  "); \
+      println(format __VA_OPT__(,) __VA_ARGS__)
+
+   indprintln("├─(symbol: %s, kind: %s)", key, SymbolKind_to_cstr(symbol->kind));
+}
+
 void AstNode_print_symbol_table(AstNode* self, Ast* ast, i32 indent) {
    #define indprintln(format, ...) \
       for (i32 i = 0; i < indent; ++i) \
          printf("│  "); \
       println(format __VA_OPT__(,) __VA_ARGS__)
 
-   mcu_todo("implement");
+   switch (self->type) {
+      case ANT_Module: {
+         indprintln("Module : %s", self->module.path.chars);
+         if (self->module.scope.length <= 0) {
+            indprintln("└─symbol table: empty");
+         } else {
+            indprintln("└─symbol table:");
+            i32 new_indent = ++indent;
+            HashMap_foreach(Symbol)(&self->module.scope, &__print_symbol_table, &new_indent);
+            indprintln("└─end");
+            indent--;
+         }
+      } return;
+      
+      case ANT_Procedure:     return;
+      case ANT_Parameter:     return;
+      case ANT_VariableDecl:  return;
+      case ANT_ReturnStmt:    return;
+      case ANT_IfStmt:        return;
+      case ANT_WhileStmt:     return;
+      case ANT_BreakStmt:     return;
+      case ANT_ContinueStmt:  return;
+      case ANT_BinOp:         return;
+      case ANT_IntLiteral:    return;
+      case ANT_StringLiteral: return;
+      case ANT_Variable:      return;
+      case ANT_FunctionCall:  return;
+   }
+
+   panic("unreachable");
 }
 
 void Ast_print(Ast self) {
