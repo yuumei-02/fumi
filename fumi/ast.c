@@ -447,3 +447,129 @@ void Ast_print(Ast self) {
    }
 }
 
+void AstNode_visit(AstNode* self, Ast* ast, AstWalker walker, nullable void* opt) {
+   switch (self->type) {
+      case ANT_Module: {
+         walker(self, opt);
+         if (self->module.ANI_procedures.length <= 0) return;
+
+         foreach (self->module.ANI_procedures, i) {
+            ANI* node_i = Vector_get(&self->module.ANI_procedures, i);
+            AstNode* node = Vector_get(&ast->AstNodes, *node_i);
+            AstNode_visit(node, ast, walker, opt);
+         }
+      } return;
+      
+      case ANT_Procedure: {
+         walker(self, opt);
+         foreach (self->procedure.ANI_parameters, i) {
+            ANI* node_i = Vector_get(&self->procedure.ANI_parameters, i);
+            AstNode* node = Vector_get(&ast->AstNodes, *node_i);
+            AstNode_visit(node, ast, walker, opt);
+         }
+
+         foreach (self->procedure.ANI_body, i) {
+            ANI* node_i = Vector_get(&self->procedure.ANI_body, i);
+            AstNode* node = Vector_get(&ast->AstNodes, *node_i);
+            AstNode_visit(node, ast, walker, opt);
+         }
+      } return;
+
+      case ANT_Parameter: {
+         walker(self, opt);
+      } return;
+      
+      case ANT_VariableDecl: {
+         walker(self, opt);
+         if (self->variable_decl.expression == -1) return;
+         AstNode* node = Vector_get(&ast->AstNodes, self->variable_decl.expression);
+         AstNode_visit(node, ast, walker, opt);
+      } return;
+
+      case ANT_IfStmt: {
+         walker(self, opt);
+         if (self->if_stmt.expression >= 0) {
+            AstNode* node = Vector_get(&ast->AstNodes, self->if_stmt.expression);
+            AstNode_visit(node, ast, walker, opt);
+         }
+         
+         foreach (self->if_stmt.ANI_body, i) {
+            ANI* node_i = Vector_get(&self->if_stmt.ANI_body, i);
+            AstNode* node = Vector_get(&ast->AstNodes, *node_i);
+            AstNode_visit(node, ast, walker, opt);
+         }
+
+         if (self->if_stmt.next_branch >= 0) {
+            AstNode* node = Vector_get(&ast->AstNodes, self->if_stmt.next_branch);
+            AstNode_visit(node, ast, walker, opt);
+         }
+      } return;
+
+      case ANT_WhileStmt: {
+         walker(self, opt);
+         
+         mcu_assert(self->while_stmt.expression != -1,
+            "While statements must always have an expression");
+         AstNode* node = Vector_get(&ast->AstNodes, self->while_stmt.expression);
+         AstNode_visit(node, ast, walker, opt);
+         
+         foreach (self->while_stmt.ANI_body, i) {
+            ANI* node_i = Vector_get(&self->while_stmt.ANI_body, i);
+            AstNode* node = Vector_get(&ast->AstNodes, *node_i);
+            AstNode_visit(node, ast, walker, opt);
+         }
+      } return;
+
+      case ANT_BreakStmt: [[fallthrough]];
+      case ANT_ContinueStmt: {
+         walker(self, opt);
+      } return;
+
+      case ANT_ReturnStmt: {
+         walker(self, opt);
+         if (self->return_stmt.expression == -1) return;
+         AstNode* node = Vector_get(&ast->AstNodes, self->return_stmt.expression);
+         AstNode_visit(node, ast, walker, opt);
+      } return;
+
+      case ANT_BinOp: {
+         walker(self, opt);
+         AstNode* node;
+
+         node = Vector_get(&ast->AstNodes, self->bin_op.left);
+         AstNode_visit(node, ast, walker, opt);
+         node = Vector_get(&ast->AstNodes, self->bin_op.right);
+         AstNode_visit(node, ast, walker, opt);
+      } return;
+      
+      case ANT_IntLiteral: [[fallthrough]];
+      case ANT_StringLiteral: [[fallthrough]];
+      case ANT_Variable: {
+         walker(self, opt);
+      } return;
+
+      case ANT_FunctionCall: {
+         walker(self, opt);
+         foreach (self->function_call.ANI_arguments, i) {
+            ANI* node_i = Vector_get(&self->function_call.ANI_arguments, i);
+            AstNode* argument = Vector_get(&ast->AstNodes, *node_i);
+            AstNode_visit(argument, ast, walker, opt);
+         }
+      } return;
+   }
+
+   panic("unreachable");
+}
+
+void Ast_walk(Ast* self, AstWalker walker, nullable void* opt) {
+   mcu_assert(self != nullptr, "self can't be null");
+   mcu_assert(walker != nullptr, "walker can't be null");
+
+   foreach (self->AstNode_modules, i) {
+      AstNode* module = Vector_get(&self->AstNode_modules, i);
+      mcu_assert(module->type = ANT_Module,
+         "Only module nodes should be present in AstNode_modules");
+      AstNode_visit(module, self, walker, opt);
+   }
+}
+

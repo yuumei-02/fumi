@@ -138,3 +138,6 @@ OperatorAssociation Operator_get_association(Operator self);
 void Ast_free(Ast* self);
 void Ast_print(Ast self);
 
+typedef void (*AstWalker)(AstNode* node, nullable void* opt);
+void Ast_walk(Ast* self, AstWalker walker, nullable void* opt);
+
