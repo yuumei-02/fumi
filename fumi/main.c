@@ -8,6 +8,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "typing.h"
+#include "doc_gen.h"
 
 i32 token_dump(const cstr file_path) {
    Lexer lexer = Lexer_new(file_path);
@@ -25,6 +26,8 @@ i32 token_dump(const cstr file_path) {
 }
 
 i32 compile(const cstr file_path, CompileFlags flags) {
+   i32 result = 0;
+
    if (flags.token_dump)
       return token_dump(file_path);
 
@@ -44,13 +47,17 @@ i32 compile(const cstr file_path, CompileFlags flags) {
       Ast_print(ast);
    }
 
+   if (flags.doc_gen) {
+      result = Ast_doc_gen(&ast);
+   }
+
    println("Compilation statistics");
    println("Target: x86-64 Linux");
    println("frontend   : %.6lfs", front_end_time);
    println("middle-end : %.6lfs", middle_end_time);
    println("[i] Compilation successfull");
    Ast_free(&ast);
-   return 0;
+   return result;
 }
 
 i32 main(i32 argc, cstr argv[]) {
@@ -67,6 +74,7 @@ i32 main(i32 argc, cstr argv[]) {
       cstr_match(argv[i]) {
          ncstreq("--token-dump") flags.token_dump = true;
          cstreq("--ast-dump")    flags.ast_dump   = true;
+         cstreq("--doc-gen")     flags.doc_gen    = true;
          
          else {
             Vector_push(&path_indexes, &i);

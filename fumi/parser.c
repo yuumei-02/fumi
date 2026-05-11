@@ -608,7 +608,29 @@ void parse_module(const cstr path, Ast* ast, ParseState* state) {
          .ANI_procedures = Vector_new(sizeof(ANI))
       }
    };
-   
+
+   // @todo: Test if it trims correctly when the file has no leading path
+   usize fname_start = self.module.path.length - 1;
+   bool found_slash = false;
+   while (!found_slash && fname_start > 0) {
+      fname_start -= 1;
+      if (path[fname_start] == '/') {
+         fname_start += 1;
+         found_slash = true;
+      }
+   }
+
+   self.module.name = String_from((cstr) path + fname_start);
+   usize old_len = self.module.name.length;
+   bool found_extension = false;
+   for (usize i = 0; i < old_len + 1; ++i) {
+      if (found_extension) {
+         String_pop(&self.module.name);
+      } else {
+         if (self.module.name.chars[i] == '.') found_extension = true;
+      }
+   }
+
    loop {
       Token token = Lexer_next(&lexer);
 

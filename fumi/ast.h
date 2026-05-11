@@ -66,6 +66,7 @@ typedef struct {
    union {
       struct {
          String path;
+         String name;
          Vector ANI_procedures;
          SymbolTable scope;
       } module;

@@ -8,6 +8,7 @@ HashMap_impl(Symbol)
 
 static Vector symbol_stack;
 
+// @todo: pop from the symbol_stack
 void Ast_symbol_visitor(AstNode* node, nullable void* opt) {
    unused opt;
    if (symbol_stack.capacity <= 0)

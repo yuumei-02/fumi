@@ -131,6 +131,7 @@ void Ast_free(Ast* self) {
    foreach (self->AstNode_modules, i) {
       AstNode* node = Vector_get(&self->AstNode_modules, i);
       String_free(&node->module.path);
+      String_free(&node->module.name);
       Vector_free(&node->module.ANI_procedures);
    }
 
@@ -205,6 +206,7 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       case ANT_Module: {
          indprintln("Module");
          indprintln("├─path: %s", self->module.path.chars);
+         indprintln("├─name: %s", self->module.name.chars);
          
          if (self->module.ANI_procedures.length <= 0) {
             indprintln("└─body: empty");
