@@ -1,7 +1,7 @@
 // Ignore me
 
 procedure check-version begin
-   version : string = "0.0.1"
+   version : i64 = 1
 end
 
 procedure add with

@@ -144,10 +144,37 @@ void AstNode_create_symbol_table(AstNode* self, Ast* ast, Vector* scope_stack) {
    panic("unreachable");
 }
 
+void Ast_create_global_scope(Ast* self, Vector* scope_stack) {
+   self->global_scope = HashMap_new(Symbol)();
+   Vector_push_create(scope_stack, (&self->global_scope));
+   
+   #define def_type(name, def) \
+      HashMap_put(Symbol)(&self->global_scope, name, (Symbol) { \
+         .kind = SK_Type, \
+         .type = def \
+      })
+
+   def_type("isize", ((Type) { .kind = TK_Int, .integer = { .bits = Bit64, .is_signed = true }}));
+   def_type("i64",   ((Type) { .kind = TK_Int, .integer = { .bits = Bit64, .is_signed = true }}));
+   def_type("i32",   ((Type) { .kind = TK_Int, .integer = { .bits = Bit32, .is_signed = true }}));
+   def_type("i16",   ((Type) { .kind = TK_Int, .integer = { .bits = Bit16, .is_signed = true }}));
+   def_type("i8",    ((Type) { .kind = TK_Int, .integer = { .bits = Bit8,  .is_signed = true }}));
+
+   def_type("usize", ((Type) { .kind = TK_Int, .integer = { .bits = Bit64, .is_signed = false }}));
+   def_type("u64",   ((Type) { .kind = TK_Int, .integer = { .bits = Bit64, .is_signed = false }}));
+   def_type("u32",   ((Type) { .kind = TK_Int, .integer = { .bits = Bit32, .is_signed = false }}));
+   def_type("u16",   ((Type) { .kind = TK_Int, .integer = { .bits = Bit16, .is_signed = false }}));
+   def_type("u8",    ((Type) { .kind = TK_Int, .integer = { .bits = Bit8,  .is_signed = false }}));
+
+   def_type("void", ((Type) { .kind = TK_Void }));
+}
+
 void Ast_create_symbol_tables(Ast* self) {
    mcu_assert(self != nullptr, "self can't be null");
-
+   
    Vector scope_stack = Vector_new(sizeof(HashMap(Symbol)*));
+   Ast_create_global_scope(self, &scope_stack);
+
    foreach (self->AstNode_modules, i) {
       AstNode* module = Vector_get(&self->AstNode_modules, i);
       AstNode_create_symbol_table(module, self, &scope_stack);

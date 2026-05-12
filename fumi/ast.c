@@ -465,7 +465,17 @@ void Ast_print(Ast self) {
       AstNode_print(node, &self, 0);
    }
 
-   AstPrintState state = { .indent = 0, .ast = &self };
+   println("Ast : Global scope");
+   if (self.global_scope.length <= 0) {
+      println("└─symbol table: empty");
+   } else {
+      println("└─symbol table:");
+      i32 indent = 1;
+      HashMap_foreach(Symbol)(&self.global_scope, &__print_symbol_table, &indent);
+      println("└─end");
+   }
+   
+   AstPrintState state = { .indent = 0, .ast = &self }; 
    Ast_walk(&self, &AstNode_print_symbol_table, &state);
 }
 

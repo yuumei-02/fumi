@@ -6,6 +6,28 @@
 #include "lexer.h"
 
 typedef enum {
+   Bit64,
+   Bit32,
+   Bit16,
+   Bit8
+} BitLength;
+
+typedef enum {
+   TK_Void,
+   TK_Int,
+} TypeKind;
+
+typedef struct {
+   TypeKind kind;
+   union {
+      struct {
+         BitLength bits;
+         bool is_signed;
+      } integer;
+   };
+} Type;
+
+typedef enum {
    SK_Proc,
    SK_Type,
    SK_Var
@@ -13,6 +35,10 @@ typedef enum {
 
 typedef struct {
    SymbolKind kind;
+
+   union {
+      Type type;
+   };
 } Symbol;
 
 HashMap_hdr(Symbol)
@@ -125,6 +151,7 @@ typedef struct {
 } AstNode;
 
 typedef struct {
+   SymbolTable global_scope;
    Vector AstNode_modules;
    Vector AstNodes;
 } Ast;
