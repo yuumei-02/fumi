@@ -1,21 +1,18 @@
 #define VMAKE_IMPL
 #include <vmake.h>
 
-Vmake vmake;
-
 i32 build(BuildOptions build_options) {
    ModuleId fumi = Module_new("fumi", "./fumi", MT_Executable);
-
    return Vmake_build(fumi, build_options);
 }
 
-i32 main(i32 argc, cstr argv[]) {
-   vmake = Vmake_go_rebuild_yourself(argc, argv);
+typedef enum {
+   C_None,
+   C_Build
+} Command;
 
-   typedef enum {
-      C_None,
-      C_Build
-   } Command;
+i32 main(i32 argc, cstr argv[]) {
+   Vmake_go_rebuild_yourself(argc, argv);
 
    Command command = C_None;
    BuildOptions build_options = BuildOptions_default_debug();
