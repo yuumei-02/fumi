@@ -6,7 +6,7 @@
 
 HashMap_impl(Symbol)
 
-void AstNode_create_symbol_table(AstNode* self, Ast* ast, Vector* scope_stack) {
+void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector* scope_stack) {
    #define push_def_scope(scope) \
       scope = HashMap_new(Symbol)(); \
       HashMap(Symbol)* scope_ptr = &scope; \
@@ -32,7 +32,7 @@ void AstNode_create_symbol_table(AstNode* self, Ast* ast, Vector* scope_stack) {
                   .node = *proc_i
                }
             });
-            AstNode_create_symbol_table(proc, ast, scope_stack);
+            AstNode_create_symbol_table(proc, *proc_i, ast, scope_stack);
          }
 
          pop_scope();
@@ -46,7 +46,10 @@ void AstNode_create_symbol_table(AstNode* self, Ast* ast, Vector* scope_stack) {
             AstNode* param = Vector_get(&ast->AstNodes, *param_i);
 
             HashMap_put(Symbol)(&self->procedure.scope, param->parameter.name.chars, (Symbol) {
-               .kind = SK_Var
+               .kind = SK_Var,
+               .var = {
+                  .node = *param_i
+               }
             });
          }
 
@@ -54,7 +57,7 @@ void AstNode_create_symbol_table(AstNode* self, Ast* ast, Vector* scope_stack) {
             ANI* node_i = Vector_get(&self->procedure.ANI_body, i);
             AstNode* node = Vector_get(&ast->AstNodes, *node_i);
 
-            AstNode_create_symbol_table(node, ast, scope_stack);
+            AstNode_create_symbol_table(node, *node_i, ast, scope_stack);
          }
          
          pop_scope();
@@ -65,20 +68,20 @@ void AstNode_create_symbol_table(AstNode* self, Ast* ast, Vector* scope_stack) {
 
          if (self->if_stmt.expression >= 0) {
             AstNode* expr = Vector_get(&ast->AstNodes, (usize) self->if_stmt.expression);
-            AstNode_create_symbol_table(expr, ast, scope_stack);
+            AstNode_create_symbol_table(expr, self->if_stmt.expression, ast, scope_stack);
          }
 
          foreach (self->if_stmt.ANI_body, i) {
             ANI* node_i = Vector_get(&self->if_stmt.ANI_body, i);
             AstNode* node = Vector_get(&ast->AstNodes, *node_i);
-            AstNode_create_symbol_table(node, ast, scope_stack);
+            AstNode_create_symbol_table(node, *node_i, ast, scope_stack);
          }
 
          pop_scope();
 
          if (self->if_stmt.next_branch >= 0) {
             AstNode* next_branch = Vector_get(&ast->AstNodes, (usize) self->if_stmt.next_branch);
-            AstNode_create_symbol_table(next_branch, ast, scope_stack);
+            AstNode_create_symbol_table(next_branch, self->if_stmt.next_branch, ast, scope_stack);
          }
 
       } return;
@@ -88,13 +91,13 @@ void AstNode_create_symbol_table(AstNode* self, Ast* ast, Vector* scope_stack) {
 
          if (self->while_stmt.expression >= 0) {
             AstNode* expr = Vector_get(&ast->AstNodes, (usize) self->while_stmt.expression);
-            AstNode_create_symbol_table(expr, ast, scope_stack);
+            AstNode_create_symbol_table(expr, self->while_stmt.expression, ast, scope_stack);
          }
 
          foreach (self->while_stmt.ANI_body, i) {
             ANI* node_i = Vector_get(&self->while_stmt.ANI_body, i);
             AstNode* node = Vector_get(&ast->AstNodes, *node_i);
-            AstNode_create_symbol_table(node, ast, scope_stack);
+            AstNode_create_symbol_table(node, *node_i, ast, scope_stack);
          }
 
          pop_scope();
@@ -102,19 +105,22 @@ void AstNode_create_symbol_table(AstNode* self, Ast* ast, Vector* scope_stack) {
 
       case ANT_VariableDecl: {
          HashMap_put(Symbol)(top_scope(), self->variable_decl.name.chars, (Symbol) {
-            .kind = SK_Var
+            .kind = SK_Var,
+            .var = {
+               .node = self_index
+            }
          });
 
          if (self->variable_decl.expression >= 0) {
             AstNode* expr = Vector_get(&ast->AstNodes, (usize) self->variable_decl.expression);
-            AstNode_create_symbol_table(expr, ast, scope_stack);
+            AstNode_create_symbol_table(expr, self->variable_decl.expression, ast, scope_stack);
          }
       } return;
       
       case ANT_ReturnStmt: {
          if (self->return_stmt.expression >= 0) {
             AstNode* expr = Vector_get(&ast->AstNodes, (usize) self->return_stmt.expression);
-            AstNode_create_symbol_table(expr, ast, scope_stack);
+            AstNode_create_symbol_table(expr, self->return_stmt.expression, ast, scope_stack);
          }
       } return;
       
@@ -122,8 +128,8 @@ void AstNode_create_symbol_table(AstNode* self, Ast* ast, Vector* scope_stack) {
          AstNode* left  = Vector_get(&ast->AstNodes, (usize) self->bin_op.left);
          AstNode* right = Vector_get(&ast->AstNodes, (usize) self->bin_op.right);
          
-         AstNode_create_symbol_table(left,  ast, scope_stack);
-         AstNode_create_symbol_table(right, ast, scope_stack);
+         AstNode_create_symbol_table(left, self->bin_op.left, ast, scope_stack);
+         AstNode_create_symbol_table(right, self->bin_op.right, ast, scope_stack);
       } return;
       
       case ANT_FunctionCall: {
@@ -131,7 +137,7 @@ void AstNode_create_symbol_table(AstNode* self, Ast* ast, Vector* scope_stack) {
             ANI* arg_i = Vector_get(&self->function_call.ANI_arguments, i);
             AstNode* arg = Vector_get(&ast->AstNodes, *arg_i);
 
-            AstNode_create_symbol_table(arg, ast, scope_stack);
+            AstNode_create_symbol_table(arg, *arg_i, ast, scope_stack);
          }
       } return;
 
@@ -180,7 +186,7 @@ void Ast_create_symbol_tables(Ast* self) {
 
    foreach (self->AstNode_modules, i) {
       AstNode* module = Vector_get(&self->AstNode_modules, i);
-      AstNode_create_symbol_table(module, self, &scope_stack);
+      AstNode_create_symbol_table(module, (ANI) i, self, &scope_stack);
    }
 }
 
