@@ -228,6 +228,52 @@ Symbol* find_symbol(Vector* scope_stack, cstr symbol_name) {
    }
 }
 
+/// Returns the str representation of the type of the variable if found.
+/// If the variable was not found or is not a variable, [null] gets returned.
+cstr type_check_variable(AstNode* variable, AnalysisState* state) {
+   bool found = false;
+   AstNode* decl;
+
+   if (state->scope_stack.length > 0) {
+      usize i = state->scope_stack.length - 1;
+      loop {
+         SymbolTable** scope = Vector_get(&state->scope_stack, i);
+         Symbol* symbol = HashMap_get(Symbol)(*scope, variable->variable.chars);
+         if (symbol != nullptr) {
+            if (symbol->kind != SK_Var) {
+               eprintln("%s:%zu:%zu: error: expected symbol \"%s\" to be a variable, got %s",
+                  variable->path, variable->y, variable->x,
+                  variable->variable.chars, SymbolKind_to_cstr(symbol->kind));
+               state->valid_program = false;
+               variable->status = ANS_Poison;
+               return nullptr;
+            }
+
+            decl = Vector_get(&state->ast->AstNodes, symbol->var.node);
+            found = true;
+            break;
+         }
+
+         if (i == 0)
+            break;
+         else
+            i--;
+      }
+   }
+
+   if (!found) {
+      eprintln("%s:%zu:%zu: error: undefined variable \"%s\"",
+         variable->path, variable->y, variable->x,
+         variable->variable.chars);
+      variable->status = ANS_Poison;
+      state->valid_program = false;
+      return nullptr;
+   } else {
+      variable->status = ANS_Valid;
+      return decl->variable_decl.type.str_literal.chars;
+   }
+}
+
 /// returns a [cstr] of the type of the expression.
 /// The return value may be [null] when no type could be found or determined.
 /// Check the root expression's status to see the result of the type check.
@@ -272,8 +318,7 @@ cstr type_check_expression(AstNode* expression, AnalysisState* state) {
       }
       
       case ANT_Variable: {
-         expression->status = ANS_Valid;
-         return expression->variable.chars;
+         return type_check_variable(expression, state);
       }
       
       case ANT_StringLiteral: {
@@ -395,46 +440,6 @@ void type_check_variable_decl(AstNode* variable_decl, AnalysisState* state) {
    variable_decl->status = ANS_Valid;
 }
 
-void type_check_variable(AstNode* variable, AnalysisState* state) {
-   if (variable->status != ANS_Unchecked) return;
-
-   bool found = false;
-
-   if (state->scope_stack.length > 0) {
-      usize i = state->scope_stack.length - 1;
-      loop {
-         SymbolTable** scope = Vector_get(&state->scope_stack, i);
-         Symbol* symbol = HashMap_get(Symbol)(*scope, variable->variable.chars);
-         if (symbol != nullptr) {
-            if (symbol->kind != SK_Var) {
-               eprintln("%s:%zu:%zu: error: expected symbol \"%s\" to be a variable, got %s",
-                  variable->path, variable->y, variable->x,
-                  variable->variable.chars, SymbolKind_to_cstr(symbol->kind));
-               state->valid_program = false;
-               return;
-            }
-            found = true;
-            break;
-         }
-
-         if (i == 0)
-            break;
-         else
-            i--;
-      }
-   }
-
-   if (!found) {
-      eprintln("%s:%zu:%zu: error: undefined variable \"%s\"",
-         variable->path, variable->y, variable->x,
-         variable->variable.chars);
-      variable->status = ANS_Poison;
-      state->valid_program = false;
-   } else {
-      variable->status = ANS_Valid;
-   }
-}
-
 void Ast_semantic_walker(AstNode* node, bool exited, nullable void* opt) {
    mcu_assert(opt != nullptr, "opt can't be null");
    
@@ -477,20 +482,25 @@ void Ast_semantic_walker(AstNode* node, bool exited, nullable void* opt) {
             Vector_push_create(&state->scope_stack, &node->while_stmt.scope);
       } break;
       
-      case ANT_BreakStmt:     break;
-      case ANT_ContinueStmt:  break;
-      case ANT_BinOp:         break;
+      case ANT_BreakStmt:    break;
+      case ANT_ContinueStmt: break;
+      
+      case ANT_BinOp: {
+         if (node->status == ANS_Unchecked)
+            type_check_expression(node, state);
+      } break;
+      
       case ANT_IntLiteral:    break;
       case ANT_StringLiteral: break;
 
       case ANT_Variable: {
-         type_check_variable(node, state);
+         if (node->status == ANS_Unchecked)
+            type_check_variable(node, state);
       } break;
       
       case ANT_FunctionCall: {
-         if (node->status == ANS_Unchecked) {
+         if (node->status == ANS_Unchecked)
             type_check_expression(node, state);
-         }
       } break;
    }
 }
