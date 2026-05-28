@@ -32,6 +32,15 @@ const cstr SymbolKind_to_cstr(SymbolKind self) {
    return "Unknown";
 }
 
+const cstr AstNodeStatus_to_cstr(AstNodeStatus self) {
+   switch (self) {
+      case ANS_Unchecked: return "Unchecked";
+      case ANS_Valid:     return "Valid";
+      case ANS_Poisen:    return "Poisen";
+   }
+   return "Unknown";
+}
+
 Operator TokenType_to_operator(TokenType type, nullable bool* is_operator) {
    if (is_operator != nullptr) *is_operator = true;
 
@@ -224,7 +233,7 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
 
    switch (self->type) {
       case ANT_Module: {
-         indprintln("Module");
+         indprintln("Module : %s", AstNodeStatus_to_cstr(self->status));
          indprintln("├─path: %s", self->module.path.chars);
          indprintln("├─name: %s", self->module.name.chars);
          
@@ -242,7 +251,7 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       } return;
       
       case ANT_Procedure: {
-         indprintln("Procedure");
+         indprintln("Procedure : %s", AstNodeStatus_to_cstr(self->status));
          indprintln("├─name: %s", self->procedure.name.chars);
          indprintln("├─return-type: %s", self->procedure.return_type.chars);
          if (self->procedure.ANI_parameters.length <= 0) {
@@ -271,13 +280,13 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       } return;
 
       case ANT_Parameter: {
-         indprintln("Parameter");
+         indprintln("Parameter : %s", AstNodeStatus_to_cstr(self->status));
          indprintln("├─name: %s", self->parameter.name.chars);
          indprintln("└─type: %s", self->parameter.type.chars);
       } return;
       
       case ANT_VariableDecl: {
-         indprintln("VariableDecl");
+         indprintln("VariableDecl : %s", AstNodeStatus_to_cstr(self->status));
          indprintln("├─name: %s", self->variable_decl.name.chars);
          indprintln("├─type: %s", self->variable_decl.type.chars);
          
@@ -292,7 +301,7 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       } return;
 
       case ANT_IfStmt: {
-         indprintln("IfStmt");
+         indprintln("IfStmt : %s", AstNodeStatus_to_cstr(self->status));
          if (self->if_stmt.expression < 0) {
             indprintln("├─expression: empty");
          } else {
@@ -322,7 +331,7 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       } return;
 
       case ANT_WhileStmt: {
-         indprintln("WhileStmt");
+         indprintln("WhileStmt : %s", AstNodeStatus_to_cstr(self->status));
          indprintln("├─expression:");
          
          mcu_assert(self->while_stmt.expression != -1,
@@ -351,7 +360,7 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       } return;
 
       case ANT_ReturnStmt: {
-         indprintln("ReturnStmt");
+         indprintln("ReturnStmt : %s", AstNodeStatus_to_cstr(self->status));
          if (self->return_stmt.expression == -1) {
             indprintln("└─expression: empty");
             return;
@@ -363,7 +372,7 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       } return;
 
       case ANT_BinOp: {
-         indprintln("BinOp");
+         indprintln("BinOp : %s", AstNodeStatus_to_cstr(self->status));
          indprintln("├─operator: %s", Operator_to_cstr(self->bin_op.operator));
          indprintln("├─left:");
          AstNode* node = Vector_get(&ast->AstNodes, self->bin_op.left);
@@ -382,12 +391,12 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       } return;
 
       case ANT_Variable: {
-         indprintln("Variable");
+         indprintln("Variable : %s", AstNodeStatus_to_cstr(self->status));
          indprintln("└─name: %s", self->variable.chars);
       } return;
 
       case ANT_FunctionCall: {
-         indprintln("FunctionCall");
+         indprintln("FunctionCall : %s", AstNodeStatus_to_cstr(self->status));
          indprintln("├─function: %s", self->function_call.function.chars);
 
          if (self->function_call.ANI_arguments.length <= 0) {

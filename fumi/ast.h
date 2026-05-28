@@ -94,9 +94,16 @@ typedef enum {
    ANT_FunctionCall
 } AstNodeType;
 
+typedef enum {
+   ANS_Unchecked,
+   ANS_Valid,
+   ANS_Poisen
+} AstNodeStatus;
+
 // @note: Don't forget to update Ast_free when changing AstNode fields
 typedef struct {
    AstNodeType type;
+   AstNodeStatus status;
 
    union {
       struct {
@@ -168,6 +175,7 @@ typedef struct {
 const cstr BitLength_to_cstr(BitLength self);
 const cstr TypeKind_to_cstr(TypeKind self);
 const cstr SymbolKind_to_cstr(SymbolKind self);
+const cstr AstNodeStatus_to_cstr(AstNodeStatus self);
 
 Operator TokenType_to_operator(TokenType type, nullable bool* is_operator);
 const cstr Operator_to_cstr(Operator operator);
