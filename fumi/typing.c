@@ -200,23 +200,46 @@ typedef struct {
 void type_check_variable(AstNode* variable, Vector* scope_stack) {
 }
 
-void Ast_semantic_walker(AstNode* node, nullable void* opt) {
+void Ast_semantic_walker(AstNode* node, bool exited, nullable void* opt) {
    mcu_assert(opt != nullptr, "opt can't be null");
    
    AnalysisState* state = opt;
 
    switch (node->type) {
-      case ANT_Module:    break;
-      case ANT_Procedure: break;
-      case ANT_Parameter: break;
+      case ANT_Module: {
+         if (exited)
+            Vector_pop(&state->scope_stack);
+         else
+            Vector_push(&state->scope_stack, &node->module.scope);
+      } break;
+      
+      case ANT_Procedure: {
+         if (exited)
+            Vector_pop(&state->scope_stack);
+         else
+            Vector_push(&state->scope_stack, &node->procedure.scope);
+      } break;
 
+      case ANT_Parameter:     break;
       case ANT_VariableDecl:  break;
       case ANT_ReturnStmt:    break;
-      case ANT_IfStmt:        break;
-      case ANT_WhileStmt:     break;
+      
+      case ANT_IfStmt: {
+         if (exited)
+            Vector_pop(&state->scope_stack);
+         else
+            Vector_push(&state->scope_stack, &node->if_stmt.scope);
+      } break;
+      
+      case ANT_WhileStmt: {
+         if (exited)
+            Vector_pop(&state->scope_stack);
+         else
+            Vector_push(&state->scope_stack, &node->while_stmt.scope);
+      } break;
+      
       case ANT_BreakStmt:     break;
       case ANT_ContinueStmt:  break;
-
       case ANT_BinOp:         break;
       case ANT_IntLiteral:    break;
       case ANT_StringLiteral: break;
