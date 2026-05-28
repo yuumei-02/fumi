@@ -39,7 +39,7 @@ i32 compile(const cstr file_path, CompileFlags flags) {
    double front_end_time = (double) (end - start) / CLOCKS_PER_SEC;
 
    start = clock();
-   Ast_create_symbol_tables(&ast);
+   if (Ast_create_symbol_tables(&ast)) result = 1;
    if (Ast_analyize_semantics(&ast)) result = 1;
    end = clock();
    double middle_end_time = (double) (end - start) / CLOCKS_PER_SEC;

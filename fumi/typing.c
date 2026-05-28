@@ -6,7 +6,7 @@
 
 HashMap_impl(Symbol)
 
-void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector* scope_stack) {
+void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector* scope_stack, bool* invalid_program) {
    #define push_def_scope(scope) \
       scope = HashMap_new(Symbol)(); \
       HashMap(Symbol)* scope_ptr = &scope; \
@@ -32,7 +32,7 @@ void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector
                   .node = *proc_i
                }
             });
-            AstNode_create_symbol_table(proc, *proc_i, ast, scope_stack);
+            AstNode_create_symbol_table(proc, *proc_i, ast, scope_stack, invalid_program);
          }
 
          pop_scope();
@@ -57,7 +57,7 @@ void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector
             ANI* node_i = Vector_get(&self->procedure.ANI_body, i);
             AstNode* node = Vector_get(&ast->AstNodes, *node_i);
 
-            AstNode_create_symbol_table(node, *node_i, ast, scope_stack);
+            AstNode_create_symbol_table(node, *node_i, ast, scope_stack, invalid_program);
          }
          
          pop_scope();
@@ -68,20 +68,20 @@ void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector
 
          if (self->if_stmt.expression >= 0) {
             AstNode* expr = Vector_get(&ast->AstNodes, (usize) self->if_stmt.expression);
-            AstNode_create_symbol_table(expr, self->if_stmt.expression, ast, scope_stack);
+            AstNode_create_symbol_table(expr, self->if_stmt.expression, ast, scope_stack, invalid_program);
          }
 
          foreach (self->if_stmt.ANI_body, i) {
             ANI* node_i = Vector_get(&self->if_stmt.ANI_body, i);
             AstNode* node = Vector_get(&ast->AstNodes, *node_i);
-            AstNode_create_symbol_table(node, *node_i, ast, scope_stack);
+            AstNode_create_symbol_table(node, *node_i, ast, scope_stack, invalid_program);
          }
 
          pop_scope();
 
          if (self->if_stmt.next_branch >= 0) {
             AstNode* next_branch = Vector_get(&ast->AstNodes, (usize) self->if_stmt.next_branch);
-            AstNode_create_symbol_table(next_branch, self->if_stmt.next_branch, ast, scope_stack);
+            AstNode_create_symbol_table(next_branch, self->if_stmt.next_branch, ast, scope_stack, invalid_program);
          }
 
       } return;
@@ -91,19 +91,26 @@ void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector
 
          if (self->while_stmt.expression >= 0) {
             AstNode* expr = Vector_get(&ast->AstNodes, (usize) self->while_stmt.expression);
-            AstNode_create_symbol_table(expr, self->while_stmt.expression, ast, scope_stack);
+            AstNode_create_symbol_table(expr, self->while_stmt.expression, ast, scope_stack, invalid_program);
          }
 
          foreach (self->while_stmt.ANI_body, i) {
             ANI* node_i = Vector_get(&self->while_stmt.ANI_body, i);
             AstNode* node = Vector_get(&ast->AstNodes, *node_i);
-            AstNode_create_symbol_table(node, *node_i, ast, scope_stack);
+            AstNode_create_symbol_table(node, *node_i, ast, scope_stack, invalid_program);
          }
 
          pop_scope();
       } return;
 
       case ANT_VariableDecl: {
+         Symbol* existing_decl = HashMap_get(Symbol)(top_scope(), self->variable_decl.name.chars);
+         if (existing_decl != nullptr) {
+            eprintln("Redeclaration of variable \"%s\"", self->variable_decl.name.chars);
+            *invalid_program = true;
+            return;
+         }
+      
          HashMap_put(Symbol)(top_scope(), self->variable_decl.name.chars, (Symbol) {
             .kind = SK_Var,
             .var = {
@@ -113,14 +120,14 @@ void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector
 
          if (self->variable_decl.expression >= 0) {
             AstNode* expr = Vector_get(&ast->AstNodes, (usize) self->variable_decl.expression);
-            AstNode_create_symbol_table(expr, self->variable_decl.expression, ast, scope_stack);
+            AstNode_create_symbol_table(expr, self->variable_decl.expression, ast, scope_stack, invalid_program);
          }
       } return;
       
       case ANT_ReturnStmt: {
          if (self->return_stmt.expression >= 0) {
             AstNode* expr = Vector_get(&ast->AstNodes, (usize) self->return_stmt.expression);
-            AstNode_create_symbol_table(expr, self->return_stmt.expression, ast, scope_stack);
+            AstNode_create_symbol_table(expr, self->return_stmt.expression, ast, scope_stack, invalid_program);
          }
       } return;
       
@@ -128,8 +135,8 @@ void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector
          AstNode* left  = Vector_get(&ast->AstNodes, (usize) self->bin_op.left);
          AstNode* right = Vector_get(&ast->AstNodes, (usize) self->bin_op.right);
          
-         AstNode_create_symbol_table(left, self->bin_op.left, ast, scope_stack);
-         AstNode_create_symbol_table(right, self->bin_op.right, ast, scope_stack);
+         AstNode_create_symbol_table(left, self->bin_op.left, ast, scope_stack, invalid_program);
+         AstNode_create_symbol_table(right, self->bin_op.right, ast, scope_stack, invalid_program);
       } return;
       
       case ANT_FunctionCall: {
@@ -137,7 +144,7 @@ void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector
             ANI* arg_i = Vector_get(&self->function_call.ANI_arguments, i);
             AstNode* arg = Vector_get(&ast->AstNodes, *arg_i);
 
-            AstNode_create_symbol_table(arg, *arg_i, ast, scope_stack);
+            AstNode_create_symbol_table(arg, *arg_i, ast, scope_stack, invalid_program);
          }
       } return;
 
@@ -178,38 +185,42 @@ void Ast_create_global_scope(Ast* self, Vector* scope_stack) {
    def_type("void", ((Type) { .kind = TK_Void }));
 }
 
-void Ast_create_symbol_tables(Ast* self) {
+bool Ast_create_symbol_tables(Ast* self) {
    mcu_assert(self != nullptr, "self can't be null");
    
    Vector scope_stack = Vector_new(sizeof(HashMap(Symbol)*));
    Ast_create_global_scope(self, &scope_stack);
+   bool invalid_program = false;
 
    foreach (self->AstNode_modules, i) {
       AstNode* module = Vector_get(&self->AstNode_modules, i);
-      AstNode_create_symbol_table(module, (ANI) i, self, &scope_stack);
+      AstNode_create_symbol_table(module, (ANI) i, self, &scope_stack, &invalid_program);
    }
 
    Vector_free(&scope_stack);
+   return invalid_program;
 }
 
 typedef struct {
    bool finished;
    Vector scope_stack;
+   bool valid_program;
 } AnalysisState;
 
-void type_check_variable(AstNode* variable, Vector* scope_stack) {
+void type_check_variable(AstNode* variable, AnalysisState* state) {
    if (variable->status != ANS_Unchecked) return;
 
    bool found = false;
 
-   if (scope_stack->length > 0) {
-      usize i = scope_stack->length - 1;
+   if (state->scope_stack.length > 0) {
+      usize i = state->scope_stack.length - 1;
       loop {
-         SymbolTable** scope = Vector_get(scope_stack, i);
+         SymbolTable** scope = Vector_get(&state->scope_stack, i);
          Symbol* symbol = HashMap_get(Symbol)(*scope, variable->variable.chars);
          if (symbol != nullptr) {
             if (symbol->kind != SK_Var) {
                eprintln("expected symbol \"%s\" to be a variable, got %s", variable->variable.chars, SymbolKind_to_cstr(symbol->kind));
+               state->valid_program = false;
                return;
             }
             found = true;
@@ -226,6 +237,7 @@ void type_check_variable(AstNode* variable, Vector* scope_stack) {
    if (!found) {
       eprintln("undefined variable \"%s\"", variable->variable.chars);
       variable->status = ANS_Poisen;
+      state->valid_program = false;
    } else {
       variable->status = ANS_Valid;
    }
@@ -276,7 +288,7 @@ void Ast_semantic_walker(AstNode* node, bool exited, nullable void* opt) {
       case ANT_StringLiteral: break;
       
       case ANT_Variable: {
-         type_check_variable(node, &state->scope_stack);
+         type_check_variable(node, state);
       } break;
       
       case ANT_FunctionCall: break;
@@ -287,7 +299,8 @@ bool Ast_analyize_semantics(Ast* self) {
    mcu_assert(self != nullptr, "self can't be null");
 
    AnalysisState state = {
-      .scope_stack = Vector_new(sizeof(SymbolTable*))
+      .scope_stack = Vector_new(sizeof(SymbolTable*)),
+      .valid_program = true
    };
 
    SymbolTable* global_scope = &self->global_scope;
@@ -296,6 +309,6 @@ bool Ast_analyize_semantics(Ast* self) {
    Ast_walk(self, &Ast_semantic_walker, &state);
    
    Vector_free(&state.scope_stack);
-   return true;
+   return !state.valid_program;
 }
 
