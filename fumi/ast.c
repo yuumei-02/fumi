@@ -169,19 +169,19 @@ void Ast_free(Ast* self) {
 
       switch (node->type) {
          case ANT_Procedure: {
-            String_free(&node->procedure.name);
-            String_free(&node->procedure.return_type);
+            Token_free(node->procedure.name);
+            Token_free(node->procedure.return_type);
             Vector_free(&node->procedure.ANI_body);
          } continue;
 
          case ANT_Parameter: {
-            String_free(&node->parameter.name);
-            String_free(&node->parameter.type);
+            Token_free(node->parameter.name);
+            Token_free(node->parameter.type);
          } continue;
 
          case ANT_VariableDecl: {
-            String_free(&node->variable_decl.name);
-            String_free(&node->variable_decl.type);
+            Token_free(node->variable_decl.name);
+            Token_free(node->variable_decl.type);
          } continue;
 
          case ANT_Variable: {
@@ -252,8 +252,8 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       
       case ANT_Procedure: {
          indprintln("Procedure : %s", AstNodeStatus_to_cstr(self->status));
-         indprintln("├─name: %s", self->procedure.name.chars);
-         indprintln("├─return-type: %s", self->procedure.return_type.chars);
+         indprintln("├─name: %s", self->procedure.name.str_literal.chars);
+         indprintln("├─return-type: %s", self->procedure.return_type.str_literal.chars);
          if (self->procedure.ANI_parameters.length <= 0) {
             indprintln("├─parameters: empty");
          } else {
@@ -281,14 +281,14 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
 
       case ANT_Parameter: {
          indprintln("Parameter : %s", AstNodeStatus_to_cstr(self->status));
-         indprintln("├─name: %s", self->parameter.name.chars);
-         indprintln("└─type: %s", self->parameter.type.chars);
+         indprintln("├─name: %s", self->parameter.name.str_literal.chars);
+         indprintln("└─type: %s", self->parameter.type.str_literal.chars);
       } return;
       
       case ANT_VariableDecl: {
          indprintln("VariableDecl : %s", AstNodeStatus_to_cstr(self->status));
-         indprintln("├─name: %s", self->variable_decl.name.chars);
-         indprintln("├─type: %s", self->variable_decl.type.chars);
+         indprintln("├─name: %s", self->variable_decl.name.str_literal.chars);
+         indprintln("├─type: %s", self->variable_decl.type.str_literal.chars);
          
          if (self->variable_decl.expression == -1) {
             indprintln("└─expression: empty");
@@ -447,10 +447,10 @@ static void __print_symbol_table(cstr key, Symbol* symbol, void* data) {
             foreach (proc->procedure.ANI_parameters, i) {
                ANI* param_i = Vector_get(&proc->procedure.ANI_parameters, i);
                AstNode* param = Vector_get(&state->ast->AstNodes, *param_i);
-               printf(i + 1 < proc->procedure.ANI_parameters.length ? "%s, " : "%s", param->parameter.type.chars);
+               printf(i + 1 < proc->procedure.ANI_parameters.length ? "%s, " : "%s", param->parameter.type.str_literal.chars);
             }
          }
-         printf(" -> %s)\n", proc->procedure.return_type.chars);
+         printf(" -> %s)\n", proc->procedure.return_type.str_literal.chars);
       } return;
    
       case SK_Var: {
@@ -458,8 +458,8 @@ static void __print_symbol_table(cstr key, Symbol* symbol, void* data) {
          indprintln("├─(symbol: %s, kind: %s)", key, SymbolKind_to_cstr(symbol->kind));
          cstr type_str;
          switch (var->type) {
-            case ANT_VariableDecl: type_str = var->variable_decl.type.chars; break;
-            case ANT_Parameter:    type_str = var->parameter.type.chars;     break;
+            case ANT_VariableDecl: type_str = var->variable_decl.type.str_literal.chars; break;
+            case ANT_Parameter:    type_str = var->parameter.type.str_literal.chars;     break;
             default: panic("unreachable %d", var->type);
          }
          indprintln("│  └─type: %s)", type_str);
@@ -513,7 +513,7 @@ void AstNode_print_symbol_table(AstNode* self, bool exited, void* opt) {
       } return;
       
       case ANT_Procedure: {
-         indprintln("Procedure : %s", self->procedure.name.chars);
+         indprintln("Procedure : %s", self->procedure.name.str_literal.chars);
          output_symbol_table(self->procedure.scope);
       } return;
 

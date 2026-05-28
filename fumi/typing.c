@@ -26,7 +26,7 @@ void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector
             ANI* proc_i = Vector_get(&self->module.ANI_procedures, i);
             AstNode* proc = Vector_get(&ast->AstNodes, *proc_i);
             
-            HashMap_put(Symbol)(&self->module.scope, proc->procedure.name.chars, (Symbol) {
+            HashMap_put(Symbol)(&self->module.scope, proc->procedure.name.str_literal.chars, (Symbol) {
                .kind = SK_Proc,
                .procedure = {
                   .node = *proc_i
@@ -45,7 +45,7 @@ void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector
             ANI* param_i = Vector_get(&self->procedure.ANI_parameters, i);
             AstNode* param = Vector_get(&ast->AstNodes, *param_i);
 
-            HashMap_put(Symbol)(&self->procedure.scope, param->parameter.name.chars, (Symbol) {
+            HashMap_put(Symbol)(&self->procedure.scope, param->parameter.name.str_literal.chars, (Symbol) {
                .kind = SK_Var,
                .var = {
                   .node = *param_i
@@ -104,14 +104,18 @@ void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector
       } return;
 
       case ANT_VariableDecl: {
-         Symbol* existing_decl = HashMap_get(Symbol)(top_scope(), self->variable_decl.name.chars);
+         Symbol* existing_decl = HashMap_get(Symbol)(top_scope(), self->variable_decl.name.str_literal.chars);
          if (existing_decl != nullptr) {
-            eprintln("Redeclaration of variable \"%s\"", self->variable_decl.name.chars);
+            println("%s:%zu:%zu: error: Redeclaration of variable \"%s\"",
+               self->path,
+               self->variable_decl.name.x,
+               self->variable_decl.name.y,
+               self->variable_decl.name.str_literal.chars);
             *invalid_program = true;
             return;
          }
       
-         HashMap_put(Symbol)(top_scope(), self->variable_decl.name.chars, (Symbol) {
+         HashMap_put(Symbol)(top_scope(), self->variable_decl.name.str_literal.chars, (Symbol) {
             .kind = SK_Var,
             .var = {
                .node = self_index

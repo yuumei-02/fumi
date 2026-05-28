@@ -117,21 +117,21 @@ typedef struct {
       } module;
 
       struct {
-         String name;
-         String return_type;
+         Token name;
+         Token return_type;
          Vector ANI_parameters;
          Vector ANI_body;
          SymbolTable scope;
       } procedure;
 
       struct {
-         String name;
-         String type;
+         Token name;
+         Token type;
       } parameter;
 
       struct {
-         String name;
-         String type;
+         Token name;
+         Token type;
          ANI expression;
       } variable_decl;
 

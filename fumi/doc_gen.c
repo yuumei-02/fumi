@@ -21,7 +21,7 @@ void list_procedures(Ast* ast, AstNode* module, FILE* file) {
    foreach (module->module.ANI_procedures, i) {
       ANI* node_i = Vector_get(&module->module.ANI_procedures, i);
       AstNode* procedure = Vector_get(&ast->AstNodes, *node_i);
-      fprintf(file, "      <h1>%s</h1>\n", procedure->procedure.name.chars);
+      fprintf(file, "      <h1>%s</h1>\n", procedure->procedure.name.str_literal.chars);
    }
 
    fprintf(file,
