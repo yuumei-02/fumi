@@ -352,11 +352,11 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       } return;
 
       case ANT_BreakStmt: {
-         indprintln("BreakStmt");
+         indprintln("BreakStmt : %s", AstNodeStatus_to_cstr(self->status));
       } return;
 
       case ANT_ContinueStmt: {
-         indprintln("ContinueStmt");
+         indprintln("ContinueStmt : %s", AstNodeStatus_to_cstr(self->status));
       } return;
 
       case ANT_ReturnStmt: {
@@ -383,7 +383,7 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       } return;
       
       case ANT_IntLiteral: {
-         indprintln("%ld", self->int_literal);
+         indprintln("%ld : %s", self->int_literal, AstNodeStatus_to_cstr(self->status));
       } return;
 
       case ANT_StringLiteral: {

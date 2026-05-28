@@ -188,5 +188,51 @@ void Ast_create_symbol_tables(Ast* self) {
       AstNode* module = Vector_get(&self->AstNode_modules, i);
       AstNode_create_symbol_table(module, (ANI) i, self, &scope_stack);
    }
+
+   Vector_free(&scope_stack);
+}
+
+typedef struct {
+   bool finished;
+} AnalysisState;
+
+void type_check_variable(AstNode* variable) {
+}
+
+void Ast_semantic_walker(AstNode* node, nullable void* opt) {
+   mcu_assert(opt != nullptr, "opt can't be null");
+   
+   AnalysisState* state = opt;
+
+   switch (node->type) {
+      case ANT_Module:    break;
+      case ANT_Procedure: break;
+      case ANT_Parameter: break;
+
+      case ANT_VariableDecl:  break;
+      case ANT_ReturnStmt:    break;
+      case ANT_IfStmt:        break;
+      case ANT_WhileStmt:     break;
+      case ANT_BreakStmt:     break;
+      case ANT_ContinueStmt:  break;
+
+      case ANT_BinOp:         break;
+      case ANT_IntLiteral:    break;
+      case ANT_StringLiteral: break;
+      
+      case ANT_Variable: {
+      } break;
+      
+      case ANT_FunctionCal:   break;
+   }
+}
+
+bool Ast_analyize_semantics(Ast* self, SymbolTable* symbol_table) {
+   mcu_assert(self != nullptr, "self can't be null");
+
+   AnalysisState state = {0};
+   Ast_walk(self, &Ast_semantic_walker, &state);
+
+   return true;
 }
 

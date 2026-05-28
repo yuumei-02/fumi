@@ -40,6 +40,7 @@ i32 compile(const cstr file_path, CompileFlags flags) {
 
    start = clock();
    Ast_create_symbol_tables(&ast);
+   if (Ast_analyize_semantics(&ast)) result = 1;
    end = clock();
    double middle_end_time = (double) (end - start) / CLOCKS_PER_SEC;
 
@@ -55,7 +56,11 @@ i32 compile(const cstr file_path, CompileFlags flags) {
    println("Target: x86-64 Linux");
    println("frontend   : %.6lfs", front_end_time);
    println("middle-end : %.6lfs", middle_end_time);
-   println("[i] Compilation successfull");
+   if (result == 0) {
+      println("[i] Compilation successfull");
+   } else {
+      println("[!] Compilation failed");
+   }
    Ast_free(&ast);
    return result;
 }
