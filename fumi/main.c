@@ -39,7 +39,8 @@ i32 compile(const cstr file_path, CompileFlags flags) {
    double front_end_time = (double) (end - start) / CLOCKS_PER_SEC;
 
    start = clock();
-   Ast_create_symbol_tables(&ast);
+   if (Ast_create_symbol_tables(&ast)) result = 1;
+   if (Ast_analyize_semantics(&ast)) result = 1;
    end = clock();
    double middle_end_time = (double) (end - start) / CLOCKS_PER_SEC;
 
@@ -55,14 +56,34 @@ i32 compile(const cstr file_path, CompileFlags flags) {
    println("Target: x86-64 Linux");
    println("frontend   : %.6lfs", front_end_time);
    println("middle-end : %.6lfs", middle_end_time);
-   println("[i] Compilation successfull");
+   if (result == 0) {
+      println("[i] Compilation successfull");
+   } else {
+      println("[!] Compilation failed");
+   }
    Ast_free(&ast);
    return result;
 }
 
+void help() {
+   printf(
+      "The bootstrap compiler for the fumi programming language.\n"
+      "\n"
+      "Usage:\n"
+      "   fumi <input-files> <?flags>\n"
+      "\n"
+      "Flags:\n"
+      "   --token-dump   Stop after the lexical analysis phase and output the tokens to stdout.\n"
+      "   --ast-dump     Stop after the semantic analysis phase and output the ast and other data to stdout.\n"
+      "   --doc-gen      Instead of compilation, generate documentation for the input files. @note: Not yet implemented\n"
+      "   --help         This help message.\n"
+      "\n"
+      "See \"fumi help <?command>\" for more information on a specific command. @note: Not yet implemented.\n");
+}
+
 i32 main(i32 argc, cstr argv[]) {
    if (argc < 2) {
-      eprintln("Usage: %s file.fum", argv[0]);
+      help();
       eprintln("[!] Missing arguments");
       return 1;
    }
@@ -75,6 +96,11 @@ i32 main(i32 argc, cstr argv[]) {
          ncstreq("--token-dump") flags.token_dump = true;
          cstreq("--ast-dump")    flags.ast_dump   = true;
          cstreq("--doc-gen")     flags.doc_gen    = true;
+         
+         cstreq("--help") {
+            help();
+            return 0;
+         }
          
          else {
             Vector_push(&path_indexes, &i);

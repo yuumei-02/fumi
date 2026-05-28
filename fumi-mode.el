@@ -1,5 +1,5 @@
 (defvar fumi-mode-keywords 
-   '("procedure" "begin" "end" "with" "returns" "return" "while" "do" "if" "else" "then" "break" "continue")
+   '("proc" "procedure" "begin" "end" "with" "returns" "return" "while" "do" "if" "else" "then" "break" "continue")
    "Fumi keywords")
 
 (defvar fumi-mode-types 

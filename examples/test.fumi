@@ -1,7 +1,7 @@
 // Ignore me
 
 procedure check-version begin
-   version : i64 = 1
+   version : i32 = 1
 end
 
 procedure add with
@@ -30,7 +30,7 @@ procedure main begin
    end
 
    return result
-   
+
    add(5, 10)
 end
 

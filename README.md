@@ -15,7 +15,7 @@ Then, just run ```./vmake build``` and your done.
 # Roadmap
 [ ] Asm generation for x86-64 Linux<br>
 [ ] Turing complete<br>
-[ ] Statically and strongly typed<br>
+[x] Statically and strongly typed<br>
 [ ] Self hosted<br>
 [ ] Own assembler<br>
 

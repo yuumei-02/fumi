@@ -5,6 +5,9 @@
 
 #include "lexer.h"
 
+/// AstNodeIndex
+typedef isize ANI;
+
 typedef enum {
    Bit64,
    Bit32,
@@ -27,6 +30,14 @@ typedef struct {
    };
 } Type;
 
+typedef struct {
+   ANI node;
+} Procedure;
+
+typedef struct {
+   ANI node;
+} Variable;
+
 typedef enum {
    SK_Proc,
    SK_Type,
@@ -35,9 +46,10 @@ typedef enum {
 
 typedef struct {
    SymbolKind kind;
-
    union {
       Type type;
+      Procedure procedure;
+      Variable var;
    };
 } Symbol;
 
@@ -82,12 +94,19 @@ typedef enum {
    ANT_FunctionCall
 } AstNodeType;
 
-/// AstNodeIndex
-typedef isize ANI;
+typedef enum {
+   ANS_Unchecked,
+   ANS_Valid,
+   ANS_Poison
+} AstNodeStatus;
 
 // @note: Don't forget to update Ast_free when changing AstNode fields
 typedef struct {
    AstNodeType type;
+   AstNodeStatus status;
+   cstr path;
+   usize x;
+   usize y;
 
    union {
       struct {
@@ -98,21 +117,21 @@ typedef struct {
       } module;
 
       struct {
-         String name;
-         String return_type;
+         Token name;
+         Token return_type;
          Vector ANI_parameters;
          Vector ANI_body;
          SymbolTable scope;
       } procedure;
 
       struct {
-         String name;
-         String type;
+         Token name;
+         Token type;
       } parameter;
 
       struct {
-         String name;
-         String type;
+         Token name;
+         Token type;
          ANI expression;
       } variable_decl;
 
@@ -156,7 +175,10 @@ typedef struct {
    Vector AstNodes;
 } Ast;
 
+const cstr BitLength_to_cstr(BitLength self);
+const cstr TypeKind_to_cstr(TypeKind self);
 const cstr SymbolKind_to_cstr(SymbolKind self);
+const cstr AstNodeStatus_to_cstr(AstNodeStatus self);
 
 Operator TokenType_to_operator(TokenType type, nullable bool* is_operator);
 const cstr Operator_to_cstr(Operator operator);
@@ -166,6 +188,6 @@ OperatorAssociation Operator_get_association(Operator self);
 void Ast_free(Ast* self);
 void Ast_print(Ast self);
 
-typedef void (*AstWalker)(AstNode* node, nullable void* opt);
+typedef void (*AstWalker)(AstNode* node, bool exiting, nullable void* opt);
 void Ast_walk(Ast* self, AstWalker walker, nullable void* opt);
 
