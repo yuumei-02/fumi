@@ -28,7 +28,9 @@ void AstNode_create_symbol_table(AstNode* self, Ast* ast, Vector* scope_stack) {
             
             HashMap_put(Symbol)(&self->module.scope, proc->procedure.name.chars, (Symbol) {
                .kind = SK_Proc,
-               .procedure = *proc_i
+               .procedure = {
+                  .node = *proc_i
+               }
             });
             AstNode_create_symbol_table(proc, ast, scope_stack);
          }

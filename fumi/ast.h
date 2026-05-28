@@ -30,18 +30,35 @@ typedef struct {
    };
 } Type;
 
+typedef struct {
+   ANI node;
+} Procedure;
+
+typedef struct {
+   String type;
+   ANI node;
+} Variable;
+
 typedef enum {
    SK_Proc,
    SK_Type,
    SK_Var
 } SymbolKind;
 
+typedef enum {
+   SS_Unchecked,
+   SS_Valid,
+   SS_Poisen
+} SymbolStatus;
+
 typedef struct {
    SymbolKind kind;
+   SymbolStatus status;
 
    union {
       Type type;
-      ANI procedure;
+      Procedure procedure;
+      Variable var;
    };
 } Symbol;
 
@@ -160,6 +177,7 @@ typedef struct {
 const cstr BitLength_to_cstr(BitLength self);
 const cstr TypeKind_to_cstr(TypeKind self);
 const cstr SymbolKind_to_cstr(SymbolKind self);
+const cstr SymbolStatus_to_cstr(SymbolStatus self);
 
 Operator TokenType_to_operator(TokenType type, nullable bool* is_operator);
 const cstr Operator_to_cstr(Operator operator);

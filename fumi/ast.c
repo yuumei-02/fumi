@@ -32,6 +32,16 @@ const cstr SymbolKind_to_cstr(SymbolKind self) {
    return "Unknown";
 }
 
+const cstr SymbolStatus_to_cstr(SymbolStatus self) {
+   switch (self) {
+      case SS_Unchecked: return "Unchecked";
+      case SS_Valid:     return "Valid";
+      case SS_Poisen:    return "Poisen";
+   }
+
+   return "Unknown";
+}
+
 Operator TokenType_to_operator(TokenType type, nullable bool* is_operator) {
    if (is_operator != nullptr) *is_operator = true;
 
@@ -429,8 +439,8 @@ static void __print_symbol_table(cstr key, Symbol* symbol, void* data) {
 
    switch (symbol->kind) {
       case SK_Proc: {
-         AstNode* proc = Vector_get(&state->ast->AstNodes, symbol->procedure);
-         indprintln("├─(symbol: %s, kind: %s", key, SymbolKind_to_cstr(symbol->kind));
+         AstNode* proc = Vector_get(&state->ast->AstNodes, symbol->procedure.node);
+         indprintln("├─(symbol: %s, kind: %s, status: %s", key, SymbolKind_to_cstr(symbol->kind), SymbolStatus_to_cstr(symbol->status));
          indprintf ("│  └─");
          if (proc->procedure.ANI_parameters.length < 1) {
             printf("void");
@@ -445,11 +455,11 @@ static void __print_symbol_table(cstr key, Symbol* symbol, void* data) {
       } return;
    
       case SK_Var: {
-         indprintln("├─(symbol: %s, kind: %s)", key, SymbolKind_to_cstr(symbol->kind));
+         indprintln("├─(symbol: %s, kind: %s, status: %s)", key, SymbolKind_to_cstr(symbol->kind), SymbolStatus_to_cstr(symbol->status));
       } return;
       
       case SK_Type: {
-         indprintln("├─(symbol: %s, kind: %s", key, SymbolKind_to_cstr(symbol->kind));
+         indprintln("├─(symbol: %s, kind: %s, %s", key, SymbolKind_to_cstr(symbol->kind), SymbolStatus_to_cstr(symbol->status));
          switch (symbol->type.kind) {
             case TK_Void: {
                indprintln("│  └─TypeKind := %s)", TypeKind_to_cstr(symbol->type.kind));
