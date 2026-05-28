@@ -383,7 +383,7 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
       } return;
       
       case ANT_IntLiteral: {
-         indprintln("%ld : %s", self->int_literal, AstNodeStatus_to_cstr(self->status));
+         indprintln("%ld", self->int_literal);
       } return;
 
       case ANT_StringLiteral: {

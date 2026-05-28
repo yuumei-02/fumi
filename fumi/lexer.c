@@ -40,6 +40,8 @@ void Lexer_define_keyword_hashmap() {
    def_keyword("do",        TT_Do);
    def_keyword("break",     TT_Break);
    def_keyword("continue",  TT_Continue);
+   def_keyword("true",      TT_True);
+   def_keyword("false",     TT_False);
 
    #undef def_keyword
 }
@@ -95,6 +97,8 @@ const cstr TokenType_to_cstr(TokenType self) {
       case TT_Do:        return "Do";
       case TT_Break:     return "Break";
       case TT_Continue:  return "Continue";
+      case TT_True:      return "True";
+      case TT_False:     return "False";
    }
 
    return "Unknown";
@@ -353,7 +357,11 @@ Token Lexer_next(Lexer* self) {
                   return token;
                }
 
-               token.type = *keyword;
+               switch (*keyword) {
+                  case TT_True:  token.type = TT_IntLiteral; token.int_literal = 1; break;
+                  case TT_False: token.type = TT_IntLiteral; token.int_literal = 0; break;
+                  default: token.type = *keyword;
+               }
                return token;
             }
          } break;

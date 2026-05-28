@@ -194,9 +194,10 @@ void Ast_create_symbol_tables(Ast* self) {
 
 typedef struct {
    bool finished;
+   Vector scope_stack;
 } AnalysisState;
 
-void type_check_variable(AstNode* variable) {
+void type_check_variable(AstNode* variable, Vector* scope_stack) {
 }
 
 void Ast_semantic_walker(AstNode* node, nullable void* opt) {
@@ -223,16 +224,22 @@ void Ast_semantic_walker(AstNode* node, nullable void* opt) {
       case ANT_Variable: {
       } break;
       
-      case ANT_FunctionCal:   break;
+      case ANT_FunctionCall: break;
    }
 }
 
-bool Ast_analyize_semantics(Ast* self, SymbolTable* symbol_table) {
+bool Ast_analyize_semantics(Ast* self) {
    mcu_assert(self != nullptr, "self can't be null");
 
-   AnalysisState state = {0};
-   Ast_walk(self, &Ast_semantic_walker, &state);
+   AnalysisState state = {
+      .scope_stack = Vector_new(sizeof(SymbolTable*))
+   };
 
+   Vector_push_create(&state.scope_stack, (&self->global_scope));
+
+   Ast_walk(self, &Ast_semantic_walker, &state);
+   
+   Vector_free(&state.scope_stack);
    return true;
 }
 
