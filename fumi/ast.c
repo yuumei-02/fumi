@@ -2,6 +2,26 @@
 
 #include "ast.h"
 
+const cstr BitLength_to_cstr(BitLength self) {
+   switch (self) {
+      case Bit64: return "Bit64";
+      case Bit32: return "Bit32";
+      case Bit16: return "Bit16";
+      case Bit8:  return "Bit8";
+   }
+
+   return "Unknown";
+}
+
+const cstr TypeKind_to_cstr(TypeKind self) {
+   switch (self) {
+      case TK_Void: return "Void";
+      case TK_Int:  return "Int";
+   }
+
+   return "Unknown";
+}
+
 const cstr SymbolKind_to_cstr(SymbolKind self) {
    switch (self) {
       case SK_Proc:  return "Proc";
@@ -387,22 +407,66 @@ void AstNode_print(AstNode* self, Ast* ast, i32 indent) {
    panic("unreachable");
 }
 
-static void __print_symbol_table(cstr key, Symbol* symbol, void* data) {
-   mcu_assert(data != nullptr, "data can't be null");
-   i32 indent = *(i32*) data;
-
-   #define indprintln(format, ...) \
-      for (i32 i = 0; i < indent; ++i) \
-         printf("│  "); \
-      println(format __VA_OPT__(,) __VA_ARGS__)
-
-   indprintln("├─(symbol: %s, kind: %s)", key, SymbolKind_to_cstr(symbol->kind));
-}
-
 typedef struct {
    i32 indent;
    Ast* ast;
 } AstPrintState;
+
+static void __print_symbol_table(cstr key, Symbol* symbol, void* data) {
+   mcu_assert(data != nullptr, "data can't be null");
+   AstPrintState* state = data;
+
+   #undef indprintln
+   #define indprintln(format, ...) \
+      for (i32 i = 0; i < state->indent; ++i) \
+         printf("│  "); \
+      println(format __VA_OPT__(,) __VA_ARGS__)
+
+   #define indprintf(format, ...) \
+      for (i32 i = 0; i < state->indent; ++i) \
+         printf("│  "); \
+      printf(format __VA_OPT__(,) __VA_ARGS__)
+
+   switch (symbol->kind) {
+      case SK_Proc: {
+         AstNode* proc = Vector_get(&state->ast->AstNodes, symbol->procedure);
+         indprintln("├─(symbol: %s, kind: %s", key, SymbolKind_to_cstr(symbol->kind));
+         indprintf ("│  └─");
+         if (proc->procedure.ANI_parameters.length < 1) {
+            printf("void");
+         } else {
+            foreach (proc->procedure.ANI_parameters, i) {
+               ANI* param_i = Vector_get(&proc->procedure.ANI_parameters, i);
+               AstNode* param = Vector_get(&state->ast->AstNodes, *param_i);
+               printf(i + 1 < proc->procedure.ANI_parameters.length ? "%s, " : "%s", param->parameter.type.chars);
+            }
+         }
+         printf(" -> %s)\n", proc->procedure.return_type.chars);
+      } return;
+   
+      case SK_Var: {
+         indprintln("├─(symbol: %s, kind: %s)", key, SymbolKind_to_cstr(symbol->kind));
+      } return;
+      
+      case SK_Type: {
+         indprintln("├─(symbol: %s, kind: %s", key, SymbolKind_to_cstr(symbol->kind));
+         switch (symbol->type.kind) {
+            case TK_Void: {
+               indprintln("│  └─TypeKind := %s)", TypeKind_to_cstr(symbol->type.kind));
+            } return;
+            case TK_Int: {
+               indprintln("│  ├─TypeKind := %s",  TypeKind_to_cstr(symbol->type.kind));
+               indprintln("│  ├─bits     := %s",  BitLength_to_cstr(symbol->type.integer.bits));
+               indprintln("│  └─signed   := %s)", symbol->type.integer.is_signed ? "true" : "false");
+            } return;
+         }
+
+         panic("unreachable");
+      }
+   }
+
+   panic("unreachable");
+}
 
 void AstNode_print_symbol_table(AstNode* self, void* opt) {
    AstPrintState* state = opt;
@@ -417,8 +481,8 @@ void AstNode_print_symbol_table(AstNode* self, void* opt) {
          indprintln("└─symbol table: empty"); \
       } else { \
          indprintln("└─symbol table:"); \
-         i32 new_indent = ++state->indent; \
-         HashMap_foreach(Symbol)(&scope, &__print_symbol_table, &new_indent); \
+         state->indent++; \
+         HashMap_foreach(Symbol)(&scope, &__print_symbol_table, state); \
          indprintln("└─end"); \
          state->indent--; \
       }

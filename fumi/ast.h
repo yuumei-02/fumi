@@ -5,6 +5,9 @@
 
 #include "lexer.h"
 
+/// AstNodeIndex
+typedef isize ANI;
+
 typedef enum {
    Bit64,
    Bit32,
@@ -38,6 +41,7 @@ typedef struct {
 
    union {
       Type type;
+      ANI procedure;
    };
 } Symbol;
 
@@ -81,9 +85,6 @@ typedef enum {
    ANT_Variable,
    ANT_FunctionCall
 } AstNodeType;
-
-/// AstNodeIndex
-typedef isize ANI;
 
 // @note: Don't forget to update Ast_free when changing AstNode fields
 typedef struct {
@@ -156,6 +157,8 @@ typedef struct {
    Vector AstNodes;
 } Ast;
 
+const cstr BitLength_to_cstr(BitLength self);
+const cstr TypeKind_to_cstr(TypeKind self);
 const cstr SymbolKind_to_cstr(SymbolKind self);
 
 Operator TokenType_to_operator(TokenType type, nullable bool* is_operator);
