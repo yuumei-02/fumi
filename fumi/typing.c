@@ -198,6 +198,37 @@ typedef struct {
 } AnalysisState;
 
 void type_check_variable(AstNode* variable, Vector* scope_stack) {
+   if (variable->status != ANS_Unchecked) return;
+
+   bool found = false;
+
+   if (scope_stack->length > 0) {
+      usize i = scope_stack->length - 1;
+      loop {
+         SymbolTable** scope = Vector_get(scope_stack, i);
+         Symbol* symbol = HashMap_get(Symbol)(*scope, variable->variable.chars);
+         if (symbol != nullptr) {
+            if (symbol->kind != SK_Var) {
+               eprintln("expected symbol \"%s\" to be a variable, got %s", variable->variable.chars, SymbolKind_to_cstr(symbol->kind));
+               return;
+            }
+            found = true;
+            break;
+         }
+
+         if (i == 0)
+            break;
+         else
+            i--;
+      }
+   }
+
+   if (!found) {
+      eprintln("undefined variable \"%s\"", variable->variable.chars);
+      variable->status = ANS_Poisen;
+   } else {
+      variable->status = ANS_Valid;
+   }
 }
 
 void Ast_semantic_walker(AstNode* node, bool exited, nullable void* opt) {
@@ -210,14 +241,14 @@ void Ast_semantic_walker(AstNode* node, bool exited, nullable void* opt) {
          if (exited)
             Vector_pop(&state->scope_stack);
          else
-            Vector_push(&state->scope_stack, &node->module.scope);
+            Vector_push_create(&state->scope_stack, &node->module.scope);
       } break;
       
       case ANT_Procedure: {
          if (exited)
             Vector_pop(&state->scope_stack);
          else
-            Vector_push(&state->scope_stack, &node->procedure.scope);
+            Vector_push_create(&state->scope_stack, &node->procedure.scope);
       } break;
 
       case ANT_Parameter:     break;
@@ -228,14 +259,14 @@ void Ast_semantic_walker(AstNode* node, bool exited, nullable void* opt) {
          if (exited)
             Vector_pop(&state->scope_stack);
          else
-            Vector_push(&state->scope_stack, &node->if_stmt.scope);
+            Vector_push_create(&state->scope_stack, &node->if_stmt.scope);
       } break;
       
       case ANT_WhileStmt: {
          if (exited)
             Vector_pop(&state->scope_stack);
          else
-            Vector_push(&state->scope_stack, &node->while_stmt.scope);
+            Vector_push_create(&state->scope_stack, &node->while_stmt.scope);
       } break;
       
       case ANT_BreakStmt:     break;
@@ -245,6 +276,7 @@ void Ast_semantic_walker(AstNode* node, bool exited, nullable void* opt) {
       case ANT_StringLiteral: break;
       
       case ANT_Variable: {
+         type_check_variable(node, &state->scope_stack);
       } break;
       
       case ANT_FunctionCall: break;
@@ -258,7 +290,8 @@ bool Ast_analyize_semantics(Ast* self) {
       .scope_stack = Vector_new(sizeof(SymbolTable*))
    };
 
-   Vector_push_create(&state.scope_stack, (&self->global_scope));
+   SymbolTable* global_scope = &self->global_scope;
+   Vector_push(&state.scope_stack, &global_scope);
 
    Ast_walk(self, &Ast_semantic_walker, &state);
    
