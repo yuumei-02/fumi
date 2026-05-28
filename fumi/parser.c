@@ -409,7 +409,7 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state, TokenType ter
                case TT_Colon: {
                   exit_panic();
                   Lexer_next(lexer);
-                  ANI variable_decl = parse_variable_decl(token, lexer, ast, state, peek.x, peek.y);
+                  ANI variable_decl = parse_variable_decl(token, lexer, ast, state, token.x, token.y);
                   if (variable_decl >= 0) Vector_push(&self, &variable_decl);
                } break;
 

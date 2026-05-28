@@ -108,8 +108,8 @@ void AstNode_create_symbol_table(AstNode* self, ANI self_index, Ast* ast, Vector
          if (existing_decl != nullptr) {
             println("%s:%zu:%zu: error: Redeclaration of variable \"%s\"",
                self->path,
-               self->variable_decl.name.x,
-               self->variable_decl.name.y,
+               self->y,
+               self->x,
                self->variable_decl.name.str_literal.chars);
             *invalid_program = true;
             return;
@@ -224,7 +224,9 @@ void type_check_variable(AstNode* variable, AnalysisState* state) {
          Symbol* symbol = HashMap_get(Symbol)(*scope, variable->variable.chars);
          if (symbol != nullptr) {
             if (symbol->kind != SK_Var) {
-               eprintln("expected symbol \"%s\" to be a variable, got %s", variable->variable.chars, SymbolKind_to_cstr(symbol->kind));
+               eprintln("%s:%zu:%zu: error: expected symbol \"%s\" to be a variable, got %s",
+                  variable->path, variable->y, variable->x,
+                  variable->variable.chars, SymbolKind_to_cstr(symbol->kind));
                state->valid_program = false;
                return;
             }
@@ -240,7 +242,9 @@ void type_check_variable(AstNode* variable, AnalysisState* state) {
    }
 
    if (!found) {
-      eprintln("undefined variable \"%s\"", variable->variable.chars);
+      eprintln("%s:%zu:%zu: error: undefined variable \"%s\"",
+         variable->path, variable->y, variable->x,
+         variable->variable.chars);
       variable->status = ANS_Poisen;
       state->valid_program = false;
    } else {
