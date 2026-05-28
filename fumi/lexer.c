@@ -26,6 +26,7 @@ void Lexer_define_keyword_hashmap() {
    #define def_keyword(keyword, type) \
       HashMap_put(TokenType)(&keywords, keyword, type);
 
+   def_keyword("proc",      TT_Procedure);
    def_keyword("procedure", TT_Procedure);
    def_keyword("return",    TT_Return);
    def_keyword("with",      TT_With);
