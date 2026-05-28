@@ -97,7 +97,7 @@ typedef enum {
 typedef enum {
    ANS_Unchecked,
    ANS_Valid,
-   ANS_Poisen
+   ANS_Poison
 } AstNodeStatus;
 
 // @note: Don't forget to update Ast_free when changing AstNode fields

@@ -212,6 +212,106 @@ typedef struct {
    Ast* ast;
 } AnalysisState;
 
+Symbol* find_symbol(Vector* scope_stack, cstr symbol_name) {
+   mcu_todo("not yet implemented");
+}
+
+/// returns a [cstr] of the type of the expression.
+/// The return value may be [null] when no type could be found or determined.
+/// Check the root expression node's status to check the result of the check.
+cstr type_check_expression(AstNode* expression, AnalysisState* state) {
+   switch (expression->type) {
+      case ANT_BinOp: {
+         AstNode* left = Vector_get(&state->ast->AstNodes, expression->bin_op.left);
+         AstNode* right = Vector_get(&state->ast->AstNodes, expression->bin_op.right);
+
+         cstr left_type = type_check_expression(left, state);
+         cstr right_type = type_check_expression(right, state);
+         if (left_type == nullptr) {
+            if (right_type == nullptr) {
+               expression->status = ANS_Poison;
+               return nullptr;
+            }
+            return right_type;
+         }
+
+         if (right_type == nullptr) {
+            return left_type;
+         }
+
+         if (strcmp(left_type, right_type) != 0) {
+            state->valid_program = false;
+            expression->status = ANS_Poison;
+            println("%s:%zu:%zu: error: incompatible datatype for operation: \"%s\" %s \"%s\"",
+               left->path, left->y, left->x,
+               left_type, Operator_to_cstr(expression->bin_op.operator), right_type);
+            return left_type;
+         }
+
+         expression->status = ANS_Valid;
+         return left_type;
+      } break;
+      
+      case ANT_IntLiteral:    return "i32";
+      case ANT_Variable:      return expression->variable.chars;
+      case ANT_StringLiteral: return "char*";
+
+      case ANT_FunctionCall: {
+         Symbol* proc_sym = find_symbol(&state->scope_stack, expression->function_call.function.chars);
+         if (proc_sym != SK_Proc) {
+            state->valid_program = false;
+            expression->status = ANS_Poison;
+            eprintln("%s:%zu:%zu: error: procedure \"%s\" does not exist and may be out of scope.",
+               expression->path, expression->y, expression->x, expression->function_call.function.chars);
+            return nullptr;
+         }
+
+         AstNode* proc_def = Vector_get(&state->ast->AstNodes, proc_sym->procedure.node);
+         if (proc_def->procedure.ANI_parameters.length != expression->function_call.ANI_arguments.length) {
+            state->valid_program = false;
+            expression->status = ANS_Poison;
+            eprintln("%s:%zu:%zu: error: call to procedure \"%s\" does not match the definition's argument count",
+               expression->path, expression->y, expression->x, expression->procedure.name.str_literal.chars);
+         }
+         
+         foreach (expression->function_call.ANI_arguments, i) {
+            if (i >= proc_def->procedure.ANI_parameters.length) break;
+
+            ANI* param_i = Vector_get(&proc_def->procedure.ANI_parameters, i);
+            ANI* arg_i = Vector_get(&expression->function_call.ANI_arguments, i);
+            
+            AstNode* param = Vector_get(&state->ast->AstNodes, *param_i);
+            AstNode* arg = Vector_get(&state->ast->AstNodes, *arg_i);
+
+            cstr arg_type = type_check_expression(arg, state);
+            if (arg_type == nullptr || expression->status == ANS_Poison)
+               continue;
+
+            if (strcmp(arg_type, param->parameter.type.str_literal.chars) != 0) {
+               state->valid_program = false;
+               expression->status = ANS_Poison;
+               eprintln("%s:%zu:%zu: error: argument in procedure call to \"%s\" does not match the definition's parameter type of \"%s\"",
+                  arg->path, arg->y, arg->x,
+                  expression->function_call.function.chars,
+                  param->parameter.type.str_literal.chars);
+            }
+         }
+
+         if (expression->status == ANS_Unchecked) {
+            expression->status = ANS_Valid;
+         }
+
+         return proc_def->procedure.return_type.str_literal.chars;
+      }
+
+      default: {
+         panic("unreachable");
+      }
+   }
+
+   return nullptr;
+}
+
 void type_check_variable(AstNode* variable, AnalysisState* state) {
    if (variable->status != ANS_Unchecked) return;
 
@@ -245,7 +345,7 @@ void type_check_variable(AstNode* variable, AnalysisState* state) {
       eprintln("%s:%zu:%zu: error: undefined variable \"%s\"",
          variable->path, variable->y, variable->x,
          variable->variable.chars);
-      variable->status = ANS_Poisen;
+      variable->status = ANS_Poison;
       state->valid_program = false;
    } else {
       variable->status = ANS_Valid;
@@ -295,7 +395,7 @@ void Ast_semantic_walker(AstNode* node, bool exited, nullable void* opt) {
       case ANT_BinOp:         break;
       case ANT_IntLiteral:    break;
       case ANT_StringLiteral: break;
-      
+
       case ANT_Variable: {
          type_check_variable(node, state);
       } break;

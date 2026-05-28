@@ -36,7 +36,7 @@ const cstr AstNodeStatus_to_cstr(AstNodeStatus self) {
    switch (self) {
       case ANS_Unchecked: return "Unchecked";
       case ANS_Valid:     return "Valid";
-      case ANS_Poisen:    return "Poisen";
+      case ANS_Poison:    return "Poison";
    }
    return "Unknown";
 }

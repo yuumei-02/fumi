@@ -14,7 +14,6 @@ end
 
 procedure main begin
    result : i32 = 50
-   result : u64 = 5
 
    while true do
       result -= 1
@@ -31,7 +30,7 @@ procedure main begin
    end
 
    return result
-   
+
    add(5, 10)
 end
 
