@@ -104,6 +104,9 @@ typedef enum {
 typedef struct {
    AstNodeType type;
    AstNodeStatus status;
+   cstr path;
+   usize x;
+   usize y;
 
    union {
       struct {

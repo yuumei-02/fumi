@@ -41,6 +41,8 @@ retry:
       case TT_IntLiteral: {
          Vector_push_create(&ast->AstNodes, ((AstNode) {
             .type = ANT_IntLiteral,
+            .x = token.x,
+            .y = token.y,
             .int_literal = token.int_literal
          }));
 
@@ -50,6 +52,8 @@ retry:
       case TT_StringLiteral: {
          Vector_push_create(&ast->AstNodes, ((AstNode) {
             .type = ANT_StringLiteral,
+            .x = token.x,
+            .y = token.y,
             .str_literal = token.str_literal
          }));
 
@@ -63,6 +67,8 @@ retry:
             case TT_LParen: {
                AstNode function_call = {
                   .type = ANT_FunctionCall,
+                  .x = token.x,
+                  .y = token.y,
                   .function_call = {
                      .function = token.str_literal,
                      .ANI_arguments = Vector_new(sizeof(ANI))
@@ -124,6 +130,8 @@ retry:
             default: {
                Vector_push_create(&ast->AstNodes, ((AstNode) {
                   .type = ANT_Variable,
+                  .x = token.x,
+                  .y = token.y,
                   .variable = token.str_literal
                }));
 
@@ -187,6 +195,8 @@ ANI parse_expression_impl(Lexer* lexer, Ast* ast, ParseState* state, isize prece
          case O_DivEqu: {
             Vector_push_create(&ast->AstNodes, ((AstNode) {
                .type = ANT_BinOp,
+               .x = op_token.x,
+               .y = op_token.y,
                .bin_op = {
                   .operator = op,
                   .left = lhs,
@@ -201,9 +211,11 @@ ANI parse_expression_impl(Lexer* lexer, Ast* ast, ParseState* state, isize prece
    return lhs;
 }
 
-ANI parse_variable_decl(String name, Lexer* lexer, Ast* ast, ParseState* state) {
+ANI parse_variable_decl(String name, Lexer* lexer, Ast* ast, ParseState* state, usize x, usize y) {
    AstNode self = {
       .type = ANT_VariableDecl,
+      .x = x,
+      .y = y,
       .variable_decl = {
          .name = name,
          .expression = -1
@@ -239,9 +251,11 @@ failure:
    return -1;
 }
 
-ANI parse_return_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
+ANI parse_return_stmt(Lexer* lexer, Ast* ast, ParseState* state, usize x, usize y) {
    AstNode self = {
       .type = ANT_ReturnStmt,
+      .x = x,
+      .y = y,
       .return_stmt = {
          .expression = parse_expression(lexer, ast, state)
       }
@@ -252,9 +266,11 @@ ANI parse_return_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
 }
 
 // @todo: validate correctness
-ANI parse_if_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
+ANI parse_if_stmt(Lexer* lexer, Ast* ast, ParseState* state, usize x, usize y) {
    AstNode self = {
-      .type = ANT_IfStmt
+      .type = ANT_IfStmt,
+      .x = x,
+      .y = y
    };
 
    Vector AstNode_branches = Vector_new(sizeof(AstNode));
@@ -273,16 +289,23 @@ ANI parse_if_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
 
       bool ended_with_else;
       self.if_stmt.ANI_body = parse_code_block(lexer, ast, state, TT_Else, &ended_with_else);
-      Vector_push(&AstNode_branches, &self);
 
-      // @todo: else statement by fetching the previous token
       next = Lexer_next(lexer);
       switch (next.type) {
-         case TT_If: break;
+         case TT_If: {
+            self.x = next.x;
+            self.y = next.y;
+            Vector_push(&AstNode_branches, &self);
+         } break;
       
          default: {
+            Vector_push(&AstNode_branches, &self);
             Lexer_undo(lexer, next);
             if (ended_with_else) {
+               // @todo: Get the previous token somehow to get its location results
+               //        Currently, the location reported at the else branch is that of the token after else
+               self.x = next.x;
+               self.y = next.y;
                self.if_stmt.expression = -1;
                self.if_stmt.ANI_body = parse_code_block(lexer, ast, state, TT_End, nullptr);
                Vector_push(&AstNode_branches, &self);
@@ -321,9 +344,11 @@ failure:
    return -1;
 }
 
-ANI parse_while_stmt(Lexer* lexer, Ast* ast, ParseState* state) {
+ANI parse_while_stmt(Lexer* lexer, Ast* ast, ParseState* state, usize x, usize y) {
    AstNode self = {
-      .type = ANT_WhileStmt
+      .type = ANT_WhileStmt,
+      .x = x,
+      .y = y
    };
 
    self.while_stmt.expression = parse_expression(lexer, ast, state);
@@ -367,11 +392,10 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state, TokenType ter
                case TT_Colon: {
                   exit_panic();
                   Lexer_next(lexer);
-                  ANI variable_decl = parse_variable_decl(token.str_literal, lexer, ast, state);
+                  ANI variable_decl = parse_variable_decl(token.str_literal, lexer, ast, state, peek.x, peek.y);
                   if (variable_decl >= 0) Vector_push(&self, &variable_decl);
                } break;
 
-               // @todo: validate correctness
                default: {
                   Lexer_undo(lexer, token);
                   ANI expression = parse_expression(lexer, ast, state);
@@ -394,31 +418,41 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state, TokenType ter
 
          case TT_Return: {
             exit_panic();
-            ANI return_stmt = parse_return_stmt(lexer, ast, state);
+            ANI return_stmt = parse_return_stmt(lexer, ast, state, token.x, token.y);
             Vector_push(&self, &return_stmt);
          } break;
 
          case TT_If: {
             exit_panic();
-            ANI if_stmt = parse_if_stmt(lexer, ast, state);
+            ANI if_stmt = parse_if_stmt(lexer, ast, state, token.x, token.y);
             if (if_stmt >= 0) Vector_push(&self, &if_stmt);
          } break;
 
          case TT_While: {
             exit_panic();
-            ANI while_stmt = parse_while_stmt(lexer, ast, state);
+            ANI while_stmt = parse_while_stmt(lexer, ast, state, token.x, token.y);
             if (while_stmt >= 0) Vector_push(&self, &while_stmt);
          } break;
 
          case TT_Break: {
-            AstNode break_stmt = { .type = ANT_BreakStmt };
+            AstNode break_stmt = {
+               .type = ANT_BreakStmt,
+               .x = token.x,
+               .y = token.y
+            };
+
             Vector_push(&ast->AstNodes, &break_stmt);
             ANI ani_break_stmt = (ANI) (ast->AstNodes.length - 1);
             Vector_push(&self, &ani_break_stmt);
          } break;
 
          case TT_Continue: {
-            AstNode continue_stmt = { .type = ANT_ContinueStmt };
+            AstNode continue_stmt = {
+               .type = ANT_ContinueStmt,
+               .x = token.x,
+               .y = token.y
+            };
+
             Vector_push(&ast->AstNodes, &continue_stmt);
             ANI ani_continue_stmt = (ANI) (ast->AstNodes.length - 1);
             Vector_push(&self, &ani_continue_stmt);
@@ -457,9 +491,11 @@ Vector parse_code_block(Lexer* lexer, Ast* ast, ParseState* state, TokenType ter
    return self;
 }
    
-ANI parse_procedure(Lexer* lexer, Ast* ast, ParseState* state) {
+ANI parse_procedure(Lexer* lexer, Ast* ast, ParseState* state, usize x, usize y) {
    AstNode self = {
       .type = ANT_Procedure,
+      .x = x,
+      .y = y,
       .procedure = {
          .name = String_dummy(),
          .return_type = String_dummy(),
@@ -519,6 +555,8 @@ ANI parse_procedure(Lexer* lexer, Ast* ast, ParseState* state) {
                } break;
 
                case IA_ParName: {
+                  parameter.x = token.x;
+                  parameter.y = token.y;
                   parameter.parameter.name = token.str_literal;
                   expected[0] = TT_Colon;
                   expected_len = 1;
@@ -603,6 +641,8 @@ void parse_module(const cstr path, Ast* ast, ParseState* state) {
 
    AstNode self = {
       .type = ANT_Module,
+      .x = 1,
+      .y = 1,
       .module = {
          .path = String_from((cstr) path),
          .ANI_procedures = Vector_new(sizeof(ANI))
@@ -637,7 +677,7 @@ void parse_module(const cstr path, Ast* ast, ParseState* state) {
       switch (token.type) {
          case TT_Procedure: {
             exit_panic();
-            ANI procedure = parse_procedure(&lexer, ast, state);
+            ANI procedure = parse_procedure(&lexer, ast, state, token.x, token.y);
             if (procedure == -1) break;
             Vector_push(&self.module.ANI_procedures, &procedure);
          } break;

@@ -203,8 +203,9 @@ bool Ast_create_symbol_tables(Ast* self) {
 
 typedef struct {
    bool finished;
-   Vector scope_stack;
    bool valid_program;
+   Vector scope_stack;
+   Ast* ast;
 } AnalysisState;
 
 void type_check_variable(AstNode* variable, AnalysisState* state) {
@@ -300,7 +301,8 @@ bool Ast_analyize_semantics(Ast* self) {
 
    AnalysisState state = {
       .scope_stack = Vector_new(sizeof(SymbolTable*)),
-      .valid_program = true
+      .valid_program = true,
+      .ast = self
    };
 
    SymbolTable* global_scope = &self->global_scope;
