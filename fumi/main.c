@@ -60,9 +60,25 @@ i32 compile(const cstr file_path, CompileFlags flags) {
    return result;
 }
 
+void help() {
+   printf(
+      "The bootstrap compiler for the fumi programming language.\n"
+      "\n"
+      "Usage:\n"
+      "   fumi <input-files> <?flags>\n"
+      "\n"
+      "Flags:\n"
+      "   --token-dump   Stop after the lexical analysis phase and output the tokens to stdout.\n"
+      "   --ast-dump     Stop after the semantic analysis phase and output the ast and other data to stdout.\n"
+      "   --doc-gen      Instead of compilation, generate documentation for the input files. @note: Not yet implemented\n"
+      "   --help         This help message.\n"
+      "\n"
+      "See \"fumi help <?command>\" for more information on a specific command. @note: Not yet implemented.\n");
+}
+
 i32 main(i32 argc, cstr argv[]) {
    if (argc < 2) {
-      eprintln("Usage: %s file.fum", argv[0]);
+      help();
       eprintln("[!] Missing arguments");
       return 1;
    }
@@ -75,6 +91,11 @@ i32 main(i32 argc, cstr argv[]) {
          ncstreq("--token-dump") flags.token_dump = true;
          cstreq("--ast-dump")    flags.ast_dump   = true;
          cstreq("--doc-gen")     flags.doc_gen    = true;
+         
+         cstreq("--help") {
+            help();
+            return 0;
+         }
          
          else {
             Vector_push(&path_indexes, &i);
