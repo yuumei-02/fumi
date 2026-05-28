@@ -213,12 +213,24 @@ typedef struct {
 } AnalysisState;
 
 Symbol* find_symbol(Vector* scope_stack, cstr symbol_name) {
-   mcu_todo("not yet implemented");
+   if (scope_stack->length < 1)
+      return nullptr;
+
+   usize i = scope_stack->length - 1;
+   loop {
+      SymbolTable** scope = Vector_get(scope_stack, i);
+      Symbol* symbol = HashMap_get(Symbol)(*scope, symbol_name);
+      if (symbol != nullptr)
+         return symbol;
+   
+      if (i == 0) return nullptr;
+      i--;
+   }
 }
 
 /// returns a [cstr] of the type of the expression.
 /// The return value may be [null] when no type could be found or determined.
-/// Check the root expression node's status to check the result of the check.
+/// Check the root expression's status to see the result of the type check.
 cstr type_check_expression(AstNode* expression, AnalysisState* state) {
    switch (expression->type) {
       case ANT_BinOp: {
@@ -232,10 +244,12 @@ cstr type_check_expression(AstNode* expression, AnalysisState* state) {
                expression->status = ANS_Poison;
                return nullptr;
             }
+            expression->status = ANS_Valid;
             return right_type;
          }
 
          if (right_type == nullptr) {
+            expression->status = ANS_Valid;
             return left_type;
          }
 
@@ -252,16 +266,35 @@ cstr type_check_expression(AstNode* expression, AnalysisState* state) {
          return left_type;
       } break;
       
-      case ANT_IntLiteral:    return "i32";
-      case ANT_Variable:      return expression->variable.chars;
-      case ANT_StringLiteral: return "char*";
+      case ANT_IntLiteral: {
+         expression->status = ANS_Valid;
+         return "i32";
+      }
+      
+      case ANT_Variable: {
+         expression->status = ANS_Valid;
+         return expression->variable.chars;
+      }
+      
+      case ANT_StringLiteral: {
+         expression->status = ANS_Valid;
+         return "char*";
+      }
 
       case ANT_FunctionCall: {
          Symbol* proc_sym = find_symbol(&state->scope_stack, expression->function_call.function.chars);
-         if (proc_sym != SK_Proc) {
+         if (proc_sym == nullptr) {
             state->valid_program = false;
             expression->status = ANS_Poison;
             eprintln("%s:%zu:%zu: error: procedure \"%s\" does not exist and may be out of scope.",
+               expression->path, expression->y, expression->x, expression->function_call.function.chars);
+            return nullptr;
+         }
+
+         if (proc_sym->kind != SK_Proc) {
+            state->valid_program = false;
+            expression->status = ANS_Poison;
+            eprintln("%s:%zu:%zu: error: call to \"%s\" is not a procedure does.",
                expression->path, expression->y, expression->x, expression->function_call.function.chars);
             return nullptr;
          }
@@ -284,7 +317,7 @@ cstr type_check_expression(AstNode* expression, AnalysisState* state) {
             AstNode* arg = Vector_get(&state->ast->AstNodes, *arg_i);
 
             cstr arg_type = type_check_expression(arg, state);
-            if (arg_type == nullptr || expression->status == ANS_Poison)
+            if (arg_type == nullptr || arg->status == ANS_Poison)
                continue;
 
             if (strcmp(arg_type, param->parameter.type.str_literal.chars) != 0) {
@@ -310,6 +343,56 @@ cstr type_check_expression(AstNode* expression, AnalysisState* state) {
    }
 
    return nullptr;
+}
+
+void type_check_variable_decl(AstNode* variable_decl, AnalysisState* state) {
+   if (variable_decl->status != ANS_Unchecked) return;
+
+   if (strcmp("@infer", variable_decl->variable_decl.type.str_literal.chars) == 0) {
+      if (variable_decl->variable_decl.expression < 0) {
+         state->valid_program = false;
+         variable_decl->status = ANS_Poison;
+         eprintln("%s:%zu:%zu: error: unable to infer the variable's type from the expression",
+            variable_decl->path, variable_decl->y, variable_decl->x);
+         return;
+      }
+
+      AstNode* expression = Vector_get(&state->ast->AstNodes, variable_decl->variable_decl.expression);
+      cstr expr_type = type_check_expression(expression, state);
+      if (expr_type == nullptr || expression->status != ANS_Valid) {
+         state->valid_program = false;
+         variable_decl->status = ANS_Poison;
+         eprintln("%s:%zu:%zu: error: unable to infer the variable's type from the expression",
+            expression->path, expression->y, expression->x);
+         return;
+      }
+
+      String_free(&variable_decl->variable_decl.type.str_literal);
+      variable_decl->variable_decl.type.str_literal = String_from(expr_type);
+   } else {
+      if (variable_decl->variable_decl.expression < 0) {
+         variable_decl->status = ANS_Valid;
+         return;
+      }
+   
+      AstNode* expression = Vector_get(&state->ast->AstNodes, variable_decl->variable_decl.expression);
+      cstr expr_type = type_check_expression(expression, state);
+      if (expr_type == nullptr || expression->status != ANS_Valid) {
+         variable_decl->status = ANS_Valid;
+         return;
+      }
+
+      if (strcmp(variable_decl->variable_decl.type.str_literal.chars, expr_type) != 0) {
+         state->valid_program = false;
+         variable_decl->status = ANS_Poison;
+         eprintln("%s:%zu:%zu: error: the expression of the variable decleration does not match the specified type of \"%s\"",
+            expression->path, expression->y, expression->x,
+            variable_decl->variable_decl.type.str_literal.chars);
+         return;
+      }
+   }
+
+   variable_decl->status = ANS_Valid;
 }
 
 void type_check_variable(AstNode* variable, AnalysisState* state) {
@@ -372,9 +455,13 @@ void Ast_semantic_walker(AstNode* node, bool exited, nullable void* opt) {
             Vector_push_create(&state->scope_stack, &node->procedure.scope);
       } break;
 
-      case ANT_Parameter:     break;
-      case ANT_VariableDecl:  break;
-      case ANT_ReturnStmt:    break;
+      case ANT_Parameter: break;
+      
+      case ANT_VariableDecl: {
+         type_check_variable_decl(node, state);
+      } break;
+      
+      case ANT_ReturnStmt: break;
       
       case ANT_IfStmt: {
          if (exited)
@@ -400,7 +487,11 @@ void Ast_semantic_walker(AstNode* node, bool exited, nullable void* opt) {
          type_check_variable(node, state);
       } break;
       
-      case ANT_FunctionCall: break;
+      case ANT_FunctionCall: {
+         if (node->status == ANS_Unchecked) {
+            type_check_expression(node, state);
+         }
+      } break;
    }
 }
 
