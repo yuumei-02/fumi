@@ -10,6 +10,13 @@
 #include "typing.h"
 #include "doc_gen.h"
 
+const cstr version_str = "0.0.1";
+
+void version() {
+   println("The bootstrap compiler for the fumi programming language.\n"
+           "version: %s", version_str);
+}
+
 i32 token_dump(const cstr file_path) {
    Lexer lexer = Lexer_new(file_path);
 
@@ -76,6 +83,7 @@ void help() {
       "   --token-dump   Stop after the lexical analysis phase and output the tokens to stdout.\n"
       "   --ast-dump     Stop after the semantic analysis phase and output the ast and other data to stdout.\n"
       "   --doc-gen      Instead of compilation, generate documentation for the input files. @note: Not yet implemented\n"
+      "   --version      Print the current compiler version."
       "   --help         This help message.\n"
       "\n"
       "See \"fumi help <?command>\" for more information on a specific command. @note: Not yet implemented.\n");
@@ -99,6 +107,11 @@ i32 main(i32 argc, cstr argv[]) {
          
          cstreq("--help") {
             help();
+            return 0;
+         }
+
+         cstreq("--version") {
+            version();
             return 0;
          }
          
